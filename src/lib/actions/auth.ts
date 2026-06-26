@@ -16,8 +16,10 @@ export async function login(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
+  await supabase.auth.getUser()
+
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  redirect('/dashboard?message=login_success')
 }
 
 export async function signup(formData: FormData) {
@@ -35,8 +37,7 @@ export async function signup(formData: FormData) {
     redirect(`/signup?error=${encodeURIComponent(error.message)}`)
   }
 
-  revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  redirect('/login?message=check_email')
 }
 
 export async function loginWithGoogle() {
