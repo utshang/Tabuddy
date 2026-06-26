@@ -44,6 +44,19 @@ export async function login(formData: FormData) {
   redirect('/dashboard?message=login_success')
 }
 
+// Feature: 註冊
+// 將 Supabase 錯誤代碼對應至符合規格的中文訊息
+function mapSignupError(message: string): string {
+  const msg = message.toLowerCase()
+
+  // Rule: Email 不得與已存在的帳號重複
+  if (msg.includes('user already registered') || msg.includes('already been registered')) {
+    return '此 Email 已被使用'
+  }
+
+  return '帳號建立失敗，請稍後再試'
+}
+
 export async function signup(formData: FormData) {
   const supabase = await createClient()
 
@@ -56,10 +69,10 @@ export async function signup(formData: FormData) {
   })
 
   if (error) {
-    redirect(`/signup?error=${encodeURIComponent(error.message)}`)
+    redirect(`/signup?error=${encodeURIComponent(mapSignupError(error.message))}`)
   }
 
-  // Feature: 註冊 — Rule: 三項皆填後系統寄出 Email 驗證信
+  // Rule: 三項皆填後系統建立使用者帳號並寄出 Email 驗證信
   redirect('/login?message=check_email')
 }
 

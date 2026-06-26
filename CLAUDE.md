@@ -86,7 +86,7 @@ Tagline: **Plan the trip, split the tab.**（一起排行程，分帳像好麻�
 - typecheck: `npm run typecheck`
 - test: `npm run test`
 
-## 目前進度 → Phase 1：登入
+## 目前進度 → Phase 1：註冊
 
 ## 維運備註
 
