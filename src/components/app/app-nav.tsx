@@ -18,7 +18,12 @@ export function AppNav({ user }: { user: User }) {
         <div className="flex items-center gap-3">
           <span className="text-sm  hidden sm:block">{displayName}</span>
           <form action={logout}>
-            <Button type="submit" variant="ghost" size="sm">
+            <Button
+              type="submit"
+              variant="ghost"
+              size="sm"
+              className="cursor-pointer"
+            >
               登出
             </Button>
           </form>
