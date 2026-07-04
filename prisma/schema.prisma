@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 對應 spec/erm.dbml 的 users：系統使用者，由 Supabase Auth 管理認證。
+// id 直接沿用 auth.users.id（uuid），讓 RLS policy 能直接比對 auth.uid()。
+model User {
+  id    String @id @db.Uuid
+  name  String
+  email String @unique
+
+  tripMembers TripMember[]
+
+  @@map("users")
+}
+
+// 對應 spec/erm.dbml 的 trips：旅程核心實體。
+model Trip {
+  id          Int    @id @default(autoincrement())
+  name        String
+  start_date  String
+  end_date    String
+  invite_token String @unique
+
+  members TripMember[]
+  days    Day[]
+
+  @@map("trips")
+}
+
+// 對應 spec/erm.dbml 的 trip_members：旅程與使用者的多對多關聯。
+model TripMember {
+  trip_id Int
+  user_id String @db.Uuid
+  role    String
+
+  trip Trip @relation(fields: [trip_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([trip_id, user_id])
+  @@map("trip_members")
+}
+
+// 對應 spec/erm.dbml 的 days：依旅程起迄日自動產生。
+model Day {
+  id         Int     @id @default(autoincrement())
+  trip_id    Int
+  date       String
+  start_time String?
+  order      Int
+
+  trip Trip @relation(fields: [trip_id], references: [id], onDelete: Cascade)
+
+  @@map("days")
+}

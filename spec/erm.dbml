@@ -11,16 +11,17 @@ Table users {
 
 Table trips {
   id           int    [pk, increment]
-  name         string [not null, note: "旅程名稱，必填"]
+  name         string [not null, note: "旅程名稱，必填，trim 後不可為空字串"]
   start_date   string [not null, note: "旅程開始日期（YYYY-MM-DD），必填"]
   end_date     string [not null, note: "旅程結束日期（YYYY-MM-DD），必填"]
-  invite_token string [unique, not null, note: "分享連結用的唯一令牌"]
+  invite_token string [unique, not null, note: "分享連結用的唯一令牌，固定長度 6 碼，僅由英文大小寫字母與數字組成"]
 
   Note: '''
   旅程核心實體，包含行程與帳本兩個區塊。
   trips 1:N trip_members
   trips 1:N days
   trips 1:N expenses
+  跨屬性不變條件：end_date >= start_date（允許起迄同一天的單日旅程，迄日不得早於起日）
   '''
 }
 
