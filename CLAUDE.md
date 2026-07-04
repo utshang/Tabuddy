@@ -42,7 +42,7 @@ Tagline: **Plan the trip, split the tab.**（一起排行程，分帳像好麻�
 4. 分帳：付款人、金額、拆分、計算餘額、以最少轉帳次數結清
 5. 有完整 loading / empty / error 狀態的精緻 UI
 
-## 技術選型（刻意對齊目標公司 stack）
+## 技術選型
 
 - **Next.js 15（App Router）+ React 19 + TypeScript 5**（strict mode）
 - **Tailwind CSS + shadcn/ui**
@@ -68,9 +68,8 @@ Tagline: **Plan the trip, split the tab.**（一起排行程，分帳像好麻�
   `trip_members` 是所有 policy 的核心
 - 行程編輯用**樂觀更新 + 失敗回滾**
 - **TanStack Query × Supabase Realtime**：即時事件進來時，invalidate 或直接更新
-  Query cache，讓兩者狀態一致。這個整合點是很好的面試亮點，務必做乾淨
+  Query cache，讓兩者狀態一致。這個整合點是很好的技術亮點，務必做乾淨
 - settlement 演算法放在 **`src/lib/settlement`**，寫成**純函式 + 完整單元測試**。
-  保持乾淨——這是刻意安排的面試講點
 
 ## 資料模型
 
