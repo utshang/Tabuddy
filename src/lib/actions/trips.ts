@@ -207,3 +207,50 @@ export async function editTrip(
   revalidatePath('/dashboard')
   return { success: true }
 }
+
+export type DeleteTripState = {
+  error?: string
+  success?: boolean
+}
+
+export async function deleteTrip(
+  _prevState: DeleteTripState,
+  formData: FormData
+): Promise<DeleteTripState> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) redirect('/login')
+
+  const tripId = Number(formData.get('trip_id'))
+  const confirmDeletion = formData.get('confirm_deletion') === 'true'
+
+  const membership = await prisma.tripMember.findUnique({
+    where: { trip_id_user_id: { trip_id: tripId, user_id: user.id } },
+  })
+
+  // Rule: 非成員無法刪除旅程
+  if (!membership) {
+    return { error: '你不是此旅程的成員' }
+  }
+
+  // Rule: 只有建立者可以刪除旅程
+  // Rule: 加入者無法刪除旅程
+  if (membership.role !== 'owner') {
+    return { error: '只有建立者可以刪除旅程' }
+  }
+
+  // Rule: 刪除旅程需經使用者確認才會執行
+  if (!confirmDeletion) {
+    return { error: '請先確認刪除' }
+  }
+
+  // Rule: 刪除旅程後關聯的旅程日期、行程、交通時間、開支與成員記錄一併刪除
+  // （由資料庫層級的 ON DELETE CASCADE 外鍵約束保證）
+  await prisma.trip.delete({ where: { id: tripId } })
+
+  revalidatePath('/dashboard')
+  return { success: true }
+}

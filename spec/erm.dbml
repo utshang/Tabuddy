@@ -22,6 +22,7 @@ Table trips {
   trips 1:N days
   trips 1:N expenses
   跨屬性不變條件：end_date >= start_date（允許起迄同一天的單日旅程，迄日不得早於起日）
+  刪除旅程時，關聯的 trip_members、days（及其下 activities、transports）、expenses（及其下 expense_splits）皆一併刪除（cascade delete）。
   '''
 }
 
