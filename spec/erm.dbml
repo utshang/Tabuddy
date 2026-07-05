@@ -47,7 +47,13 @@ Table days {
   start_time string [note: "當天行程開始時間（HH:MM），選填"]
   order      int    [not null, note: "在旅程中的順序（從 1 開始）"]
 
-  Note: "依旅程起迄日自動產生，旅程有幾天就有幾筆。days 1:N activities"
+  Note: '''
+  依旅程起迄日自動產生，旅程有幾天就有幾筆。
+  編輯旅程縮減起迄日範圍時，超出新範圍的 days 連同其下 activities、transports 一併刪除；
+  若範圍外已有 activities，刪除前需經使用者確認，取消確認則不執行本次編輯。
+  編輯旅程擴大起迄日範圍時，系統依新增日期範圍自動產生對應的 days，order 依日期順序重新編號以維持與 date 的順序一致。
+  days 1:N activities
+  '''
 }
 
 Table activities {

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { AuthMessageToast } from "@/components/auth/auth-message-toast";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
+import { EditTripDialog } from "@/components/trips/edit-trip-dialog";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -50,7 +51,10 @@ export default async function DashboardPage() {
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {trips.map((trip) => (
             <li key={trip.id} className="rounded-xl border p-4 space-y-1">
-              <p className="font-medium">{trip.name}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium">{trip.name}</p>
+                <EditTripDialog trip={trip} />
+              </div>
               <p className="text-sm text-muted-foreground">
                 {trip.start_date} ~ {trip.end_date}
               </p>
