@@ -208,6 +208,33 @@ export async function editTrip(
   return { success: true }
 }
 
+export type ShareTripState = {
+  error?: string
+  inviteToken?: string
+}
+
+export async function shareTrip(tripId: number): Promise<ShareTripState> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) redirect('/login')
+
+  const membership = await prisma.tripMember.findUnique({
+    where: { trip_id_user_id: { trip_id: tripId, user_id: user.id } },
+  })
+
+  // Rule: 使用者必須是旅程成員才能分享
+  if (!membership) {
+    return { error: '你不是此旅程的成員' }
+  }
+
+  // Rule: 旅程成員（owner 或 member）分享後系統回傳該旅程的分享連結
+  const trip = await prisma.trip.findUniqueOrThrow({ where: { id: tripId } })
+  return { inviteToken: trip.invite_token }
+}
+
 export type DeleteTripState = {
   error?: string
   success?: boolean

@@ -16,7 +16,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 
 type Trip = {
@@ -26,8 +25,15 @@ type Trip = {
   end_date: string
 }
 
-export function EditTripDialog({ trip }: { trip: Trip }) {
-  const [open, setOpen] = useState(false)
+export function EditTripDialog({
+  trip,
+  open,
+  onOpenChange,
+}: {
+  trip: Trip
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const [serverError, setServerError] = useState<string>()
   const [confirmState, setConfirmState] = useState<{ affectedDates: string[] } | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -73,7 +79,7 @@ export function EditTripDialog({ trip }: { trip: Trip }) {
 
       toast.success('旅程已更新')
       setConfirmState(null)
-      setOpen(false)
+      onOpenChange(false)
     })
   }
 
@@ -83,7 +89,7 @@ export function EditTripDialog({ trip }: { trip: Trip }) {
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        setOpen(next)
+        onOpenChange(next)
         if (!next) {
           reset()
           setServerError(undefined)
@@ -91,7 +97,6 @@ export function EditTripDialog({ trip }: { trip: Trip }) {
         }
       }}
     >
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>編輯</DialogTrigger>
       <DialogContent>
         {confirmState ? (
           <>

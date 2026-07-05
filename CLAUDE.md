@@ -85,7 +85,7 @@ Tagline: **Plan the trip, split the tab.**（一起排行程，分帳像好麻�
 - typecheck: `npm run typecheck`
 - test: `npm run test`
 
-## 目前進度 → Phase：刪除旅程
+## 目前進度 → Phase：分享旅程
 
 > 使用者不會手動更新這行。每次功能／phase 完成時，Claude 應主動把這行改成下一個 phase（不用等使用者提醒）。使用者也可能直接在對話中口頭告知目前進度，此時以對話內容為準。
 

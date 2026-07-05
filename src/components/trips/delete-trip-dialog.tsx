@@ -11,7 +11,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 type Trip = {
@@ -19,8 +18,15 @@ type Trip = {
   name: string;
 };
 
-export function DeleteTripDialog({ trip }: { trip: Trip }) {
-  const [open, setOpen] = useState(false);
+export function DeleteTripDialog({
+  trip,
+  open,
+  onOpenChange,
+}: {
+  trip: Trip;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const [serverError, setServerError] = useState<string>();
   const [isPending, startTransition] = useTransition();
 
@@ -40,7 +46,7 @@ export function DeleteTripDialog({ trip }: { trip: Trip }) {
       }
 
       toast.success("旅程已刪除");
-      setOpen(false);
+      onOpenChange(false);
     });
   }
 
@@ -48,13 +54,10 @@ export function DeleteTripDialog({ trip }: { trip: Trip }) {
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        setOpen(next);
+        onOpenChange(next);
         if (!next) setServerError(undefined);
       }}
     >
-      <DialogTrigger render={<Button variant="destructive" size="sm" />}>
-        刪除
-      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>確定要刪除「{trip.name}」嗎？</DialogTitle>
@@ -72,7 +75,7 @@ export function DeleteTripDialog({ trip }: { trip: Trip }) {
         <DialogFooter>
           <Button
             variant="outline"
-            onClick={() => setOpen(false)}
+            onClick={() => onOpenChange(false)}
             disabled={isPending}
           >
             取消

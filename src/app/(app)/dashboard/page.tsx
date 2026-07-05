@@ -3,8 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { AuthMessageToast } from "@/components/auth/auth-message-toast";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
-import { EditTripDialog } from "@/components/trips/edit-trip-dialog";
-import { DeleteTripDialog } from "@/components/trips/delete-trip-dialog";
+import { TripActionsMenu } from "@/components/trips/trip-actions-menu";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -62,10 +61,7 @@ export default async function DashboardPage() {
               <li key={trip.id} className="rounded-xl border p-4 space-y-1">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium">{trip.name}</p>
-                  <div className="flex gap-2">
-                    <EditTripDialog trip={trip} />
-                    {isOwner && <DeleteTripDialog trip={trip} />}
-                  </div>
+                  <TripActionsMenu trip={trip} isOwner={isOwner} />
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {trip.start_date} ~ {trip.end_date}

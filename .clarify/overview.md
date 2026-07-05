@@ -18,25 +18,25 @@
 
 ## 釐清策略說明
 
-- 本輪掃描範圍：`spec/features/刪除旅程.feature`（及其連動的 `trips` / `days` / `activities` / `transports` / `expenses` / `expense_splits` / `trip_members` 資料模型）
-- 3 項釐清皆已解決，歸檔於 `.clarify/resolved/data/` 與 `.clarify/resolved/features/`
+- 本輪掃描範圍：`spec/features/分享旅程.feature`（及其連動的 `trips`／`trip_members` 資料模型、`加入旅程.feature`）
+- 2 項釐清皆已解決，歸檔於 `.clarify/resolved/features/`
 
 ## 覆蓋度摘要
 
 | 分類 | 狀態 | 說明 |
 |------|------|------|
-| A1 實體完整性 | Clear | 刪除旅程不涉及新實體 |
-| A2 屬性定義 | Clear | 不涉及新屬性 |
-| A3 屬性值邊界條件 | Clear | 不涉及新數值邊界 |
-| A4 跨屬性不變條件 | Resolved | 刪除旅程時關聯資料（days/activities/transports/expenses/expense_splits/trip_members）皆一併刪除，已寫入 `erm.dbml` |
-| A5 關係與唯一性 | Clear | 不受刪除旅程影響 |
+| A1 實體完整性 | Clear | 分享旅程不涉及新實體 |
+| A2 屬性定義 | Clear | invite_token 定義與格式已於 `建立旅程.feature` 解決 |
+| A3 屬性值邊界條件 | Resolved | invite_token 建立後永久固定，不提供重新產生/撤銷機制，已寫入 `erm.dbml` |
+| A4 跨屬性不變條件 | Clear | 不涉及新的跨屬性計算 |
+| A5 關係與唯一性 | Clear | 不受分享旅程影響 |
 | A6 生命週期與狀態 | Clear | trips 無狀態欄位需求 |
-| B1 功能識別 | Clear | 交互時機與功能邊界明確 |
-| B2 規則完整性 | Resolved | 新增 2 條 Rule（刪除需經確認、刪除後關聯資料一併刪除）；未結清開支不影響刪除，已由既有 Rule 涵蓋 |
-| B3 例子覆蓋度 | Resolved | 所有新增 Rule 皆已補齊 Example |
-| B4 邊界條件覆蓋 | Resolved | 確認/取消刪除、連動資料刪除皆已覆蓋 |
+| B1 功能識別 | Clear | 交互時機與功能邊界明確，與加入旅程界線清楚 |
+| B2 規則完整性 | Resolved | 分享權限已確認 owner/member 皆可，比照編輯旅程 |
+| B3 例子覆蓋度 | Resolved | owner、member 各自補上獨立 Example |
+| B4 邊界條件覆蓋 | Resolved | 角色（類別）邊界（owner vs member）已涵蓋 |
 | B5 錯誤與異常處理 | Clear | 「操作失敗」表述與同類 feature 一致 |
-| C1 詞彙表 | Clear | 「owner」「member」「建立者」「加入者」用語與其他 feature 一致 |
-| C2 術語衝突 | Clear | 無衝突 |
-| D1 待決事項 | Clear | 無 TODO |
-| D2 模糊描述 | Clear | 無模糊形容詞 |
+| C1 詞彙表 | Clear | 「分享連結」「invite_token」用語與 `加入旅程.feature` 一致 |
+| C2 術語衝突 | Resolved | Given 步驟已統一改用「在旅程...的角色為」句型 |
+| D1 待決事項 | Clear | 無 TODO 標記 |
+| D2 模糊描述 | Clear | 無未量化形容詞 |
