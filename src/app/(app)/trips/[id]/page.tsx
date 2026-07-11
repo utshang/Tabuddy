@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { DayTabsNav } from "@/components/trips/day-tabs-nav";
 import { AddActivityDialog } from "@/components/trips/add-activity-dialog";
+import { EditActivityDialog } from "@/components/trips/edit-activity-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 
 function formatDate(date: string) {
@@ -95,25 +96,31 @@ export default async function TripPage({
                 {day.activities.map((activity) => (
                   <li key={activity.id}>
                     <Card size="sm">
-                      <CardContent className="space-y-1">
-                        {activity.google_map_url ? (
-                          <a
-                            href={activity.google_map_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                          >
-                            <MapPin className="size-3.5" />
-                            {activity.name}
-                          </a>
-                        ) : (
-                          <p className="font-medium">{activity.name}</p>
-                        )}
-                        {activity.duration_minutes != null && (
+                      <CardContent className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          {activity.google_map_url ? (
+                            <a
+                              href={activity.google_map_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                            >
+                              <MapPin className="size-3.5" />
+                              {activity.name}
+                            </a>
+                          ) : (
+                            <p className="font-medium">{activity.name}</p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             停留 {activity.duration_minutes} 分鐘
                           </p>
-                        )}
+                          {activity.note && (
+                            <p className="text-xs text-muted-foreground">
+                              {activity.note}
+                            </p>
+                          )}
+                        </div>
+                        <EditActivityDialog activity={activity} />
                       </CardContent>
                     </Card>
                   </li>

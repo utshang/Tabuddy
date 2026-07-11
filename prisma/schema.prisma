@@ -68,7 +68,7 @@ model Activity {
   day_id           Int
   name             String
   google_map_url   String?
-  duration_minutes Int?
+  duration_minutes Int
   note             String?
   order            Int
 

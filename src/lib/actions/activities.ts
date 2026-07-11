@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { addActivitySchema } from "@/lib/validations/activities";
+import {
+  addActivitySchema,
+  editActivitySchema,
+} from "@/lib/validations/activities";
 import { log } from "console";
 
 export type AddActivityState = {
@@ -67,5 +70,71 @@ export async function addActivity(
   });
 
   revalidatePath(`/trips/${day.trip_id}`);
+  return { success: true };
+}
+
+export type EditActivityState = {
+  error?: string;
+  success?: boolean;
+};
+
+export async function editActivity(
+  _prevState: EditActivityState,
+  formData: FormData,
+): Promise<EditActivityState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const activityId = Number(formData.get("activity_id"));
+
+  const parsed = editActivitySchema.safeParse({
+    name: formData.get("name"),
+    google_map_url: formData.get("google_map_url"),
+    duration_minutes: formData.get("duration_minutes"),
+    note: formData.get("note"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "編輯行程失敗" };
+  }
+
+  const { name, google_map_url, duration_minutes, note } = parsed.data;
+
+  const activity = await prisma.activity.findUniqueOrThrow({
+    where: { id: activityId },
+    include: { day: true },
+  });
+
+  const membership = await prisma.tripMember.findUnique({
+    where: {
+      trip_id_user_id: { trip_id: activity.day.trip_id, user_id: user.id },
+    },
+  });
+
+  // Rule: 使用者必須是旅程成員
+  if (!membership) {
+    return { error: "你不是此旅程的成員" };
+  }
+
+  // Rule: 成員可以編輯行程的名稱
+  // Rule: 成員可以編輯行程的 GoogleMap 連結
+  // Rule: 成員可以編輯行程的停留時間
+  // Rule: 成員可以編輯行程的備註
+  // Rule: 編輯行程可同時修改任意欄位組合
+  await prisma.activity.update({
+    where: { id: activityId },
+    data: {
+      name,
+      google_map_url: google_map_url ?? null,
+      duration_minutes,
+      note: note ?? null,
+    },
+  });
+
+  revalidatePath(`/trips/${activity.day.trip_id}`);
   return { success: true };
 }
