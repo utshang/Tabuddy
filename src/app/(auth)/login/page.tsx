@@ -14,9 +14,9 @@ import { LoginForm } from '@/components/auth/login-form'
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; join?: string }>
 }) {
-  const { error } = await searchParams
+  const { error, join } = await searchParams
 
   return (
     <>
@@ -32,7 +32,10 @@ export default async function LoginPage({
         </CardHeader>
 
         <CardContent>
-          <LoginForm serverError={error ? decodeURIComponent(error) : undefined} />
+          <LoginForm
+            serverError={error ? decodeURIComponent(error) : undefined}
+            join={join}
+          />
         </CardContent>
 
         <CardFooter className="justify-center text-sm text-muted-foreground">

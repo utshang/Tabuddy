@@ -26,6 +26,8 @@ function mapLoginError(message: string): string {
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
+  // 若使用者是透過「加入旅程」分享連結導向登入，登入後需帶著 invite_token 回到首頁完成加入
+  const join = formData.get('join') as string | null
 
   const { error } = await supabase.auth.signInWithPassword({
     email: formData.get('email') as string,
@@ -33,7 +35,9 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(mapLoginError(error.message))}`)
+    const params = new URLSearchParams({ error: mapLoginError(error.message) })
+    if (join) params.set('join', join)
+    redirect(`/login?${params.toString()}`)
   }
 
   // 強制 session cookie 寫入後再 redirect
@@ -41,7 +45,9 @@ export async function login(formData: FormData) {
 
   revalidatePath('/', 'layout')
   // Rule: 登入成功後使用者進入首頁
-  redirect('/dashboard?message=login_success')
+  const params = new URLSearchParams({ message: 'login_success' })
+  if (join) params.set('join', join)
+  redirect(`/dashboard?${params.toString()}`)
 }
 
 // Feature: 註冊

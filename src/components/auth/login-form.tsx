@@ -12,9 +12,10 @@ import { AuthError } from '@/components/auth/auth-error'
 
 interface LoginFormProps {
   serverError?: string
+  join?: string
 }
 
-export function LoginForm({ serverError }: LoginFormProps) {
+export function LoginForm({ serverError, join }: LoginFormProps) {
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -34,6 +35,7 @@ export function LoginForm({ serverError }: LoginFormProps) {
 
   return (
     <form ref={formRef} action={login} onSubmit={onSubmit} className="space-y-4">
+      {join && <input type="hidden" name="join" value={join} />}
       {serverError && <AuthError message={serverError} />}
 
       <div className="space-y-2">

@@ -235,6 +235,45 @@ export async function shareTrip(tripId: number): Promise<ShareTripState> {
   return { inviteToken: trip.invite_token }
 }
 
+export type JoinTripState = {
+  error?: string
+  alreadyMember?: boolean
+}
+
+export async function joinTrip(inviteToken: string): Promise<JoinTripState> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Rule: 使用者必須已登入才能加入旅程
+  if (!user) redirect('/login')
+
+  // Rule: 分享連結必須有效
+  const trip = await prisma.trip.findUnique({ where: { invite_token: inviteToken } })
+  if (!trip) {
+    return { error: '此分享連結無效' }
+  }
+
+  const existingMembership = await prisma.tripMember.findUnique({
+    where: { trip_id_user_id: { trip_id: trip.id, user_id: user.id } },
+  })
+
+  // Rule: 已加入過的使用者重複點擊連結不會產生新的成員記錄
+  // Rule: 已是旅程成員的使用者重複加入時角色不會被覆寫
+  if (existingMembership) {
+    return { alreadyMember: true }
+  }
+
+  // Rule: 成功加入後使用者的角色為「加入者」
+  await prisma.tripMember.create({
+    data: { trip_id: trip.id, user_id: user.id, role: 'member' },
+  })
+
+  revalidatePath('/dashboard')
+  return { alreadyMember: false }
+}
+
 export type DeleteTripState = {
   error?: string
   success?: boolean

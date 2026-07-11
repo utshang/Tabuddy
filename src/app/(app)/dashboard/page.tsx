@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AuthMessageToast } from "@/components/auth/auth-message-toast";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
 import { TripActionsMenu } from "@/components/trips/trip-actions-menu";
+import { JoinTripHandler } from "@/components/trips/join-trip-handler";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -27,6 +28,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <Suspense>
         <AuthMessageToast />
+        <JoinTripHandler />
       </Suspense>
       <div className="flex items-start justify-between gap-4">
         <div>
