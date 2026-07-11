@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { AuthMessageToast } from "@/components/auth/auth-message-toast";
@@ -62,7 +63,9 @@ export default async function DashboardPage() {
             return (
               <li key={trip.id} className="rounded-xl border p-4 space-y-1">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-medium">{trip.name}</p>
+                  <Link href={`/trips/${trip.id}`} className="font-medium hover:underline">
+                    {trip.name}
+                  </Link>
                   <TripActionsMenu trip={trip} isOwner={isOwner} />
                 </div>
                 <p className="text-sm text-muted-foreground">

@@ -63,7 +63,6 @@ model Day {
 }
 
 // 對應 spec/erm.dbml 的 activities：某一天的一個行程。
-// 目前僅為編輯旅程的 cascade 刪除規則提供最小資料模型，尚未實作新增/編輯/刪除行程功能。
 model Activity {
   id               Int     @id @default(autoincrement())
   day_id           Int
