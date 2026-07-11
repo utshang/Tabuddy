@@ -1,0 +1,120 @@
+// Tabuddy ERM
+// 由 spec.md 業務規則段落萃取；設計與 UI 規範段落不納入
+
+Table users {
+  id   int    [pk, increment]
+  name string [not null, note: "使用者姓名，必填"]
+  email string [unique, not null, note: "登入用 Email，全系統唯一，必填"]
+
+  Note: "系統使用者，由 Supabase Auth 管理認證。一個使用者可以建立或加入多個旅程。users 1:N trip_members"
+}
+
+Table trips {
+  id           int    [pk, increment]
+  name         string [not null, note: "旅程名稱，必填，trim 後不可為空字串"]
+  start_date   string [not null, note: "旅程開始日期（YYYY-MM-DD），必填"]
+  end_date     string [not null, note: "旅程結束日期（YYYY-MM-DD），必填"]
+  invite_token string [unique, not null, note: "分享連結用的唯一令牌，固定長度 6 碼，僅由英文大小寫字母與數字組成；建立後永久固定，不提供重新產生或撤銷機制"]
+
+  Note: '''
+  旅程核心實體，包含行程與帳本兩個區塊。
+  trips 1:N trip_members
+  trips 1:N days
+  trips 1:N expenses
+  跨屬性不變條件：end_date >= start_date（允許起迄同一天的單日旅程，迄日不得早於起日）
+  刪除旅程時，關聯的 trip_members、days（及其下 activities、transports）、expenses（及其下 expense_splits）皆一併刪除（cascade delete）。
+  '''
+}
+
+Table trip_members {
+  trip_id int    [not null, note: "關聯旅程"]
+  user_id int    [not null, note: "關聯使用者"]
+  role    string [not null, note: "成員角色：owner（建立者）或 member（加入者）"]
+
+  indexes {
+    (trip_id, user_id) [pk, note: "同一旅程同一使用者只能有一筆成員記錄"]
+  }
+
+  Note: '''
+  旅程與使用者的多對多關聯。
+  owner 可查看、編輯、分享、刪除旅程；member 可查看、編輯、分享，不可刪除。
+  使用者以 invite_token 重複加入已是成員的旅程時，不新增記錄，且既有角色不受影響（不會被覆寫）。
+  '''
+}
+
+Table days {
+  id         int    [pk, increment]
+  trip_id    int    [not null, note: "關聯旅程"]
+  date       string [not null, note: "對應日期（YYYY-MM-DD）"]
+  start_time string [note: "當天行程開始時間（HH:MM），選填"]
+  order      int    [not null, note: "在旅程中的順序（從 1 開始）"]
+
+  Note: '''
+  依旅程起迄日自動產生，旅程有幾天就有幾筆。
+  編輯旅程縮減起迄日範圍時，超出新範圍的 days 連同其下 activities、transports 一併刪除；
+  若範圍外已有 activities，刪除前需經使用者確認，取消確認則不執行本次編輯。
+  編輯旅程擴大起迄日範圍時，系統依新增日期範圍自動產生對應的 days，order 依日期順序重新編號以維持與 date 的順序一致。
+  days 1:N activities
+  '''
+}
+
+Table activities {
+  id               int    [pk, increment]
+  day_id           int    [not null, note: "關聯旅程日期"]
+  name             string [not null, note: "行程名稱，必填"]
+  google_map_url   string [note: "GoogleMap 連結，選填；填寫後可由行程導向 GoogleMap"]
+  duration_minutes int    [note: "停留時間（分鐘），選填，若填入則 >= 0"]
+  note             string [note: "行程備註，選填"]
+  order            int    [not null, note: "在當日行程中的排序，用於時間軸計算"]
+
+  Note: "某一天的一個行程，依 order 排列。activities 1:1 transports（每個行程後可選擇性接一段交通時間）"
+}
+
+Table transports {
+  id                  int    [pk, increment]
+  after_activity_id   int    [unique, not null, note: "此段交通接在哪個行程之後；每個行程後最多一段交通時間"]
+  hours               int    [not null, note: "交通所需小時數，>= 0"]
+  minutes             int    [not null, note: "交通所需分鐘數，>= 0 且 < 60"]
+  mode                string [not null, note: "交通工具：walking / driving / flight / transit（走路 / 開車 / 飛機 / 大眾運輸）"]
+
+  Note: "行程與行程之間的交通時間，用於時間軸計算。"
+}
+
+Table expenses {
+  id         int    [pk, increment]
+  trip_id    int    [not null, note: "關聯旅程"]
+  name       string [not null, note: "品項名稱，必填"]
+  amount     float  [not null, note: "開支金額，必填，> 0"]
+  category   string [not null, note: "類別：住宿 / 吃喝 / 購物 / 其他 / 自定義字串，必填"]
+  payer_id   int    [not null, note: "付款人，為該旅程的團員之一"]
+  split_type string [not null, note: "分攤方式：even（均分）或 custom（自訂金額）"]
+
+  Note: '''
+  旅程帳本中的一筆開支。
+  expenses 1:N expense_splits
+  跨屬性不變條件：所有關聯 expense_splits 的 amount 總和 = expenses.amount
+  '''
+}
+
+Table expense_splits {
+  id         int   [pk, increment]
+  expense_id int   [not null, note: "關聯開支"]
+  user_id    int   [not null, note: "參與分攤的團員"]
+  amount     float [not null, note: "此成員的分攤金額，> 0"]
+
+  indexes {
+    (expense_id, user_id) [unique, note: "一筆開支中同一使用者只有一筆分攤明細"]
+  }
+
+  Note: "記錄某筆開支中每位參與者的分攤金額。"
+}
+
+ref: trip_members.trip_id    > trips.id
+ref: trip_members.user_id    > users.id
+ref: days.trip_id            > trips.id
+ref: activities.day_id       > days.id
+ref: transports.after_activity_id - activities.id
+ref: expenses.trip_id        > trips.id
+ref: expenses.payer_id       > users.id
+ref: expense_splits.expense_id > expenses.id
+ref: expense_splits.user_id    > users.id

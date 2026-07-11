@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 const MESSAGES: Record<string, { title: string; description: string }> = {
@@ -16,6 +16,8 @@ const MESSAGES: Record<string, { title: string; description: string }> = {
 };
 
 export function AuthMessageToast() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const message = searchParams.get("message");
   const shown = useRef(false);
@@ -24,13 +26,10 @@ export function AuthMessageToast() {
     if (message && MESSAGES[message] && !shown.current) {
       shown.current = true;
       const { title, description } = MESSAGES[message];
-      toast.success(title, {
-        description,
-        duration: 3000,
-        position: "top-center",
-      });
+      toast.success(title, { description, duration: 3000 });
+      router.replace(pathname, { scroll: false });
     }
-  }, [message]);
+  }, [message, pathname, router]);
 
   return null;
 }
