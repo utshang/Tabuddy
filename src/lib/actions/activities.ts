@@ -8,7 +8,6 @@ import {
   addActivitySchema,
   editActivitySchema,
 } from "@/lib/validations/activities";
-import { log } from "console";
 
 export type AddActivityState = {
   error?: string;
