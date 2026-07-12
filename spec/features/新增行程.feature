@@ -72,3 +72,10 @@ Feature: 新增行程
       And 使用者 "Alice" 是旅程 "大阪旅遊" 的成員
       When 使用者在旅程 "大阪旅遊" 日期 "2025-06-01" 以 名稱 "道頓堀" 停留時間 0 新增行程
       Then 操作失敗
+
+  Rule: GoogleMap 連結若填寫則必須為合法網址格式
+    Example: GoogleMap連結為不合法格式時操作失敗
+      Given 使用者 "Alice" 已登入
+      And 使用者 "Alice" 是旅程 "大阪旅遊" 的成員
+      When 使用者在旅程 "大阪旅遊" 日期 "2025-06-01" 以 名稱 "道頓堀" GoogleMap連結 "not-a-valid-url" 新增行程
+      Then 操作失敗
