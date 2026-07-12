@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { DayTabsNav } from "@/components/trips/day-tabs-nav";
 import { AddActivityDialog } from "@/components/trips/add-activity-dialog";
-import { EditActivityDialog } from "@/components/trips/edit-activity-dialog";
-import { DeleteActivityDialog } from "@/components/trips/delete-activity-dialog";
-import { Card, CardContent } from "@/components/ui/card";
+import { ActivityList } from "@/components/trips/activity-list";
 
 function formatDate(date: string) {
   const [, month, day] = date.split("-");
@@ -88,49 +85,7 @@ export default async function TripPage({
               <AddActivityDialog dayId={day.id} />
             </div>
 
-            {day.activities.length === 0 ? (
-              <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-                這天還沒有行程
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {day.activities.map((activity) => (
-                  <li key={activity.id}>
-                    <Card size="sm">
-                      <CardContent className="flex items-start justify-between gap-2">
-                        <div className="space-y-1">
-                          {activity.google_map_url ? (
-                            <a
-                              href={activity.google_map_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                            >
-                              <MapPin className="size-3.5" />
-                              {activity.name}
-                            </a>
-                          ) : (
-                            <p className="font-medium">{activity.name}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            停留 {activity.duration_minutes} 分鐘
-                          </p>
-                          {activity.note && (
-                            <p className="text-xs text-muted-foreground">
-                              {activity.note}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <EditActivityDialog activity={activity} />
-                          <DeleteActivityDialog activity={activity} />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ActivityList dayId={day.id} activities={day.activities} />
           </section>
         ))}
       </div>

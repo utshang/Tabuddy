@@ -7,7 +7,9 @@ import { prisma } from "@/lib/prisma";
 import {
   addActivitySchema,
   editActivitySchema,
+  reorderActivitySchema,
 } from "@/lib/validations/activities";
+import { computeReorder } from "@/lib/reorder";
 
 export type AddActivityState = {
   error?: string;
@@ -196,6 +198,96 @@ export async function deleteActivity(
           where: { id: a.id },
           data: { order: index + 1 },
         }),
+      ),
+    );
+  });
+
+  revalidatePath(`/trips/${activity.day.trip_id}`);
+  return { success: true };
+}
+
+export type ReorderActivityState = {
+  error?: string;
+  success?: boolean;
+};
+
+export async function reorderActivity(
+  _prevState: ReorderActivityState,
+  formData: FormData,
+): Promise<ReorderActivityState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const parsed = reorderActivitySchema.safeParse({
+    activity_id: formData.get("activity_id"),
+    target_order: formData.get("target_order"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "調整行程順序失敗" };
+  }
+
+  const { activity_id, target_order } = parsed.data;
+
+  const activity = await prisma.activity.findUniqueOrThrow({
+    where: { id: activity_id },
+    include: { day: true },
+  });
+
+  const membership = await prisma.tripMember.findUnique({
+    where: {
+      trip_id_user_id: { trip_id: activity.day.trip_id, user_id: user.id },
+    },
+  });
+
+  // Rule: 使用者必須是旅程成員
+  if (!membership) {
+    return { error: "你不是此旅程的成員" };
+  }
+
+  const dayActivities = await prisma.activity.findMany({
+    where: { day_id: activity.day_id },
+    include: { transport: true },
+  });
+
+  const reorderResult = computeReorder(
+    dayActivities.map((a) => ({
+      id: a.id,
+      order: a.order,
+      transportId: a.transport?.id ?? null,
+    })),
+    activity_id,
+    target_order,
+  );
+
+  // Rule: 目標順序超出有效範圍時操作失敗
+  if (!reorderResult) {
+    return { error: "目標順序超出有效範圍" };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Rule: 成員拖曳後行程順序更新
+    await Promise.all(
+      reorderResult.activityOrders.map(({ activityId, newOrder }) =>
+        tx.activity.update({
+          where: { id: activityId },
+          data: { order: newOrder },
+        }),
+      ),
+    );
+
+    // Rule: 交通時間依附於順序位置，不隨行程本體移動
+    await Promise.all(
+      reorderResult.transportReassignments.map(
+        ({ transportId, newAfterActivityId }) =>
+          tx.transport.update({
+            where: { id: transportId },
+            data: { after_activity_id: newAfterActivityId },
+          }),
       ),
     );
   });
