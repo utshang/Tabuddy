@@ -25,7 +25,7 @@ export function DayTabsNav({
   return (
     <div className="sticky top-0 z-10 -mx-4 bg-background/95 px-4 py-2 backdrop-blur supports-backdrop-filter:bg-background/60 sm:mx-0 sm:px-0">
       <Tabs value={active} onValueChange={handleChange}>
-        <TabsList className="h-16 w-full justify-start gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <TabsList className="h-16 w-full justify-start gap-1 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
           {days.map((day) => (
             <TabsTrigger
               key={day.id}
