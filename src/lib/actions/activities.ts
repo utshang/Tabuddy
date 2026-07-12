@@ -137,3 +137,69 @@ export async function editActivity(
   revalidatePath(`/trips/${activity.day.trip_id}`);
   return { success: true };
 }
+
+export type DeleteActivityState = {
+  error?: string;
+  success?: boolean;
+};
+
+export async function deleteActivity(
+  _prevState: DeleteActivityState,
+  formData: FormData,
+): Promise<DeleteActivityState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const activityId = Number(formData.get("activity_id"));
+  const confirmDeletion = formData.get("confirm_deletion") === "true";
+
+  const activity = await prisma.activity.findUniqueOrThrow({
+    where: { id: activityId },
+    include: { day: true },
+  });
+
+  const membership = await prisma.tripMember.findUnique({
+    where: {
+      trip_id_user_id: { trip_id: activity.day.trip_id, user_id: user.id },
+    },
+  });
+
+  // Rule: 使用者必須是旅程成員
+  if (!membership) {
+    return { error: "你不是此旅程的成員" };
+  }
+
+  // Rule: 刪除行程需經使用者確認才會執行
+  if (!confirmDeletion) {
+    return { error: "請先確認刪除" };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Rule: 成員可以刪除行程
+    // Rule: 刪除行程後接續的交通時間一併刪除
+    // （由資料庫層級的 ON DELETE CASCADE 外鍵約束保證）
+    await tx.activity.delete({ where: { id: activityId } });
+
+    // Rule: 刪除行程後同一天其餘行程順序重新編號
+    const remaining = await tx.activity.findMany({
+      where: { day_id: activity.day_id },
+      orderBy: { order: "asc" },
+    });
+
+    await Promise.all(
+      remaining.map((a, index) =>
+        tx.activity.update({
+          where: { id: a.id },
+          data: { order: index + 1 },
+        }),
+      ),
+    );
+  });
+
+  revalidatePath(`/trips/${activity.day.trip_id}`);
+  return { success: true };
+}

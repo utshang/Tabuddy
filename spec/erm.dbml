@@ -67,7 +67,10 @@ Table activities {
   note             string [note: "行程備註，選填，無長度限制"]
   order            int    [not null, note: "在當日行程中的排序，用於時間軸計算；新增行程時固定加入當天行程順序的最後（order = 該日既有行程數量 + 1）"]
 
-  Note: "某一天的一個行程，依 order 排列。activities 1:1 transports（每個行程後可選擇性接一段交通時間）。day_id 於建立後固定，編輯行程不支援變更所屬旅程日期（跨日期搬移為 MVP 範圍外）。"
+  Note: '''
+  某一天的一個行程，依 order 排列。activities 1:1 transports（每個行程後可選擇性接一段交通時間）。day_id 於建立後固定，編輯行程不支援變更所屬旅程日期（跨日期搬移為 MVP 範圍外）。
+  跨屬性不變條件：刪除行程後，同一天其餘行程的 order 重新編號為連續整數（1..N），確保新增行程時「order = 該日既有行程數量 + 1」的公式持續成立。
+  '''
 }
 
 Table transports {
@@ -77,7 +80,10 @@ Table transports {
   minutes             int    [not null, note: "交通所需分鐘數，>= 0 且 < 60"]
   mode                string [not null, note: "交通工具：walking / driving / flight / transit（走路 / 開車 / 飛機 / 大眾運輸）"]
 
-  Note: "行程與行程之間的交通時間，用於時間軸計算。"
+  Note: '''
+  行程與行程之間的交通時間，用於時間軸計算。
+  刪除行程時，接在該行程之後的交通時間一併刪除（cascade delete）。
+  '''
 }
 
 Table expenses {

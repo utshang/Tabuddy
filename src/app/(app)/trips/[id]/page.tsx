@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { DayTabsNav } from "@/components/trips/day-tabs-nav";
 import { AddActivityDialog } from "@/components/trips/add-activity-dialog";
 import { EditActivityDialog } from "@/components/trips/edit-activity-dialog";
+import { DeleteActivityDialog } from "@/components/trips/delete-activity-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 
 function formatDate(date: string) {
@@ -120,7 +121,10 @@ export default async function TripPage({
                             </p>
                           )}
                         </div>
-                        <EditActivityDialog activity={activity} />
+                        <div className="flex items-center gap-1">
+                          <EditActivityDialog activity={activity} />
+                          <DeleteActivityDialog activity={activity} />
+                        </div>
                       </CardContent>
                     </Card>
                   </li>
