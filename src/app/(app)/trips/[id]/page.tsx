@@ -32,7 +32,12 @@ export default async function TripPage({
     include: {
       days: {
         orderBy: { order: "asc" },
-        include: { activities: { orderBy: { order: "asc" } } },
+        include: {
+          activities: {
+            orderBy: { order: "asc" },
+            include: { transport: true },
+          },
+        },
       },
     },
   });

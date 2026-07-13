@@ -24,6 +24,15 @@ import { reorderActivity } from "@/lib/actions/activities";
 import { Card, CardContent } from "@/components/ui/card";
 import { EditActivityDialog } from "@/components/trips/edit-activity-dialog";
 import { DeleteActivityDialog } from "@/components/trips/delete-activity-dialog";
+import { AddTransportDialog } from "@/components/trips/add-transport-dialog";
+import { getTransportIcon } from "@/lib/transport-modes";
+
+type Transport = {
+  hours: number;
+  minutes: number;
+  mode: string;
+  icon: string | null;
+};
 
 type Activity = {
   id: number;
@@ -32,6 +41,7 @@ type Activity = {
   duration_minutes: number;
   note: string | null;
   order: number;
+  transport?: Transport | null;
 };
 
 export function ActivityList({
@@ -129,7 +139,7 @@ function SortableActivityItem({ activity }: { activity: Activity }) {
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? "opacity-50" : undefined}
+      className={isDragging ? "opacity-50 mb-0" : "mb-0"}
     >
       <Card size="sm">
         <CardContent className="flex items-start justify-between gap-2">
@@ -171,6 +181,17 @@ function SortableActivityItem({ activity }: { activity: Activity }) {
           </div>
         </CardContent>
       </Card>
+
+      <div className="flex items-center gap-2 py-2 pl-8 text-xs text-muted-foreground">
+        {activity.transport ? (
+          <span>
+            {getTransportIcon(activity.transport.mode, activity.transport.icon)}{" "}
+            · {activity.transport.hours} 時 {activity.transport.minutes} 分
+          </span>
+        ) : (
+          <AddTransportDialog activityId={activity.id} />
+        )}
+      </div>
     </li>
   );
 }

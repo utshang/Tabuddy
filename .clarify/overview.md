@@ -18,25 +18,26 @@
 
 ## 釐清策略說明
 
-- 本輪掃描範圍：`spec/features/調整行程順序.feature`，並交叉比對 `spec/features/行程時間軸.feature`、`spec/features/新增行程.feature`、`spec/features/刪除行程.feature` 與 `spec/erm.dbml` 中 `activities`／`transports` 的既有規則
-- 3 項釐清已全數解決，歸檔於 `.clarify/resolved/data/` 與 `.clarify/resolved/features/`
+- 本輪掃描範圍：`spec/features/新增交通時間.feature`，並交叉比對 `spec/erm.dbml` 中 `transports` 實體既有定義，以及 `spec/features/編輯交通時間.feature` 的對應規則以確保一致性
+- 4 項釐清已全數解決，歸檔於 `.clarify/resolved/features/`
+- 「分為必填且 >= 0 且 < 60」規則本身無歧義，已於整合階段直接補上 Example，未列入釐清問答
 
 ## 覆蓋度摘要
 
 | 分類 | 狀態 | 說明 |
 |------|------|------|
-| A1 實體完整性 | Clear | 調整行程順序不涉及新實體 |
-| A2 屬性定義 | Clear | 沿用既有 `activities.order` 定義 |
-| A3 屬性值邊界條件 | Resolved | 原為 Partial，已釐清目標順序超出有效範圍時操作失敗，並更新 `調整行程順序.feature` |
-| A4 跨屬性不變條件 | Resolved | 原為 Partial，已釐清拖曳重排時交通時間依附於原本的順序位置，`after_activity_id` 需隨拖曳重新指向，並更新 `erm.dbml` 與 `調整行程順序.feature` |
-| A5 關係與唯一性 | Clear | order 之於同一天的唯一性已由既有跨屬性不變條件涵蓋 |
-| A6 生命週期與狀態 | Clear | `activities` 無狀態欄位 |
-| B1 功能識別 | Clear | 「調整行程順序」與「行程時間軸」界線清楚（時間軸為 order 的純函式），與「編輯行程」（不可跨日期移動）界線亦清楚 |
-| B2 規則完整性 | Resolved | 原為 Partial，已補上「交通時間依附於順序位置」與「目標順序超出有效範圍時操作失敗」兩條規則 |
-| B3 例子覆蓋度 | Resolved | 原為 Partial，已補上 3 筆以上行程跨多位置拖曳、交通時間隨順序位置重新掛載、無效目標順序（過小／過大）等 Example |
-| B4 邊界條件覆蓋 | Resolved | 原為 Missing，數值邊界（無效 order）與組合邊界（行程＋交通時間）皆已補上對應 Rule 與 Example |
-| B5 錯誤與異常處理 | Resolved | 原為 Partial，已補上「目標順序超出有效範圍時操作失敗」對應 Example |
-| C1 詞彙表 | Clear | 「行程」「旅程日期」「order」用語與其他 feature 一致 |
+| A1 實體完整性 | Clear | 交通時間對應既有 `transports` 實體，無新實體 |
+| A2 屬性定義 | Clear | `hours`／`minutes`／`mode` 皆有明確型別與 note 說明 |
+| A3 屬性值邊界條件 | Resolved | `hours` 上界已釐清為 <= 99，已更新 `erm.dbml` 與 `新增交通時間.feature` |
+| A4 跨屬性不變條件 | Resolved | 時與分同時為 0 已釐清為合法輸入，已於 `新增交通時間.feature` 補上對應 Example |
+| A5 關係與唯一性 | Resolved | `after_activity_id` unique 約束下重複新增的處理方式已釐清，已於 `新增交通時間.feature` 新增對應 Rule |
+| A6 生命週期與狀態 | Clear | `transports` 無狀態欄位 |
+| B1 功能識別 | Clear | 「新增交通時間」與「編輯／刪除交通時間」界線清楚 |
+| B2 規則完整性 | Resolved | 補上「行程已有交通時間時新增操作失敗」規則；「交通工具」決議為不限制枚舉，既有規則已足夠涵蓋 |
+| B3 例子覆蓋度 | Resolved | 原本 2 條標記 #TODO 的規則（時、分）皆已補上 Example，`新增交通時間.feature` 目前無任何 #TODO |
+| B4 邊界條件覆蓋 | Resolved | 數值邊界（時上界、分上界）、組合邊界（時分同時為 0）、類別邊界（mode 不限制）皆已涵蓋 |
+| B5 錯誤與異常處理 | Resolved | 重複新增、時/分超出邊界的失敗行為皆已補上對應 Rule 與 Example |
+| C1 詞彙表 | Clear | 「時／分／模式」與 ERM 的 `hours`／`minutes`／`mode` 對應一致 |
 | C2 術語衝突 | Clear | 無同義詞混用或同名異義 |
-| D1 待決事項 | Clear | `調整行程順序.feature` 本身無 TODO 標記 |
+| D1 待決事項 | Resolved | 原有 2 個 `#TODO` 標記皆已處理完畢 |
 | D2 模糊描述 | Clear | 無未量化形容詞 |

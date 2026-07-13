@@ -82,11 +82,12 @@ model Activity {
 // after_activity_id 的唯一性約束在資料庫層為 DEFERRABLE INITIALLY DEFERRED（見對應 migration），
 // 讓調整行程順序時可在同一筆交易內安全交換兩段交通時間的所屬行程。
 model Transport {
-  id                Int    @id @default(autoincrement())
-  after_activity_id Int    @unique
+  id                Int     @id @default(autoincrement())
+  after_activity_id Int     @unique
   hours             Int
   minutes           Int
   mode              String
+  icon              String?
 
   after_activity Activity @relation(fields: [after_activity_id], references: [id], onDelete: Cascade)
 

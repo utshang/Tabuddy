@@ -76,9 +76,10 @@ Table activities {
 Table transports {
   id                  int    [pk, increment]
   after_activity_id   int    [unique, not null, note: "此段交通接在哪個行程之後；每個行程後最多一段交通時間"]
-  hours               int    [not null, note: "交通所需小時數，>= 0"]
+  hours               int    [not null, note: "交通所需小時數，必須為 >= 0 的整數，無上限"]
   minutes             int    [not null, note: "交通所需分鐘數，>= 0 且 < 60"]
-  mode                string [not null, note: "交通工具：walking / driving / flight / transit（走路 / 開車 / 飛機 / 大眾運輸）"]
+  mode                string [not null, note: "交通工具名稱，必填；前端以下拉選單呈現 walking / driving / flight / bus / train / metro（走路 / 開車 / 飛機 / 公車 / 火車 / 地鐵）六個預設選項，並允許使用者新增自訂名稱選項；欄位本身為自由文字，不因此限制為固定枚舉值"]
+  icon                string [note: "自訂交通工具的圖示，選填；若未填寫，前端以 mode 的名稱文字顯示代替。預設六個選項的圖示由前端內建提供，不寫入此欄位"]
 
   Note: '''
   行程與行程之間的交通時間，用於時間軸計算。
