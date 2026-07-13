@@ -58,6 +58,7 @@ export function ActivityList({
   );
 
   function handleDragEnd(event: DragEndEvent) {
+    //active 是被拖曳的項目，over 是放開時所在位置的項目
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -66,6 +67,7 @@ export function ActivityList({
     if (fromIndex === -1 || toIndex === -1) return;
 
     const previousItems = items;
+    //把陣列中的元素從 fromIndex 移到 toIndex，回傳新陣列（不改動原陣列）
     const nextItems = arrayMove(items, fromIndex, toIndex);
     setItems(nextItems);
 
@@ -114,8 +116,14 @@ export function ActivityList({
 }
 
 function SortableActivityItem({ activity }: { activity: Activity }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: activity.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: activity.id });
 
   return (
     <li
