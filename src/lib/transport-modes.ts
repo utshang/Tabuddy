@@ -14,3 +14,30 @@ export function getTransportIcon(mode: string, icon: string | null) {
   const preset = TRANSPORT_MODE_PRESETS.find((p) => p.value === mode);
   return preset?.icon ?? mode;
 }
+
+export function isPresetMode(mode: string) {
+  return TRANSPORT_MODE_PRESETS.some((p) => p.value === mode);
+}
+
+/**
+ * Feature: 編輯交通時間
+ * Rule: 自訂交通工具的名稱與圖示皆可編輯
+ * Rule: 交通工具改為預設選項時圖示自動清除
+ * 對應規格：spec/features/編輯交通時間.feature
+ *
+ * 依編輯後的交通工具與送出的圖示，決定編輯後應存入的 icon 值。
+ */
+export function resolveEditedTransportIcon(params: {
+  nextMode: string;
+  submittedIcon: string | null;
+}): string | null {
+  const { nextMode, submittedIcon } = params;
+
+  // Rule: 交通工具改為預設選項時圖示自動清除
+  if (isPresetMode(nextMode)) {
+    return null;
+  }
+
+  // Rule: 自訂交通工具的名稱與圖示皆可編輯
+  return submittedIcon;
+}

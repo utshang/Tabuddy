@@ -25,6 +25,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EditActivityDialog } from "@/components/trips/edit-activity-dialog";
 import { DeleteActivityDialog } from "@/components/trips/delete-activity-dialog";
 import { AddTransportDialog } from "@/components/trips/add-transport-dialog";
+import { TransportActionsMenu } from "@/components/trips/transport-actions-menu";
 import { getTransportIcon } from "@/lib/transport-modes";
 
 type Transport = {
@@ -184,10 +185,19 @@ function SortableActivityItem({ activity }: { activity: Activity }) {
 
       <div className="flex items-center gap-2 py-2 pl-8 text-xs text-muted-foreground">
         {activity.transport ? (
-          <span>
-            {getTransportIcon(activity.transport.mode, activity.transport.icon)}{" "}
-            · {activity.transport.hours} 時 {activity.transport.minutes} 分
-          </span>
+          <>
+            <span>
+              {getTransportIcon(
+                activity.transport.mode,
+                activity.transport.icon,
+              )}{" "}
+              · {activity.transport.hours} 時 {activity.transport.minutes} 分
+            </span>
+            <TransportActionsMenu
+              activityId={activity.id}
+              transport={activity.transport}
+            />
+          </>
         ) : (
           <AddTransportDialog activityId={activity.id} />
         )}

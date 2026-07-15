@@ -78,13 +78,14 @@ Table transports {
   after_activity_id   int    [unique, not null, note: "此段交通接在哪個行程之後；每個行程後最多一段交通時間"]
   hours               int    [not null, note: "交通所需小時數，必須為 >= 0 的整數，無上限"]
   minutes             int    [not null, note: "交通所需分鐘數，>= 0 且 < 60"]
-  mode                string [not null, note: "交通工具名稱，必填；前端以下拉選單呈現 walking / driving / flight / bus / train / metro（走路 / 開車 / 飛機 / 公車 / 火車 / 地鐵）六個預設選項，並允許使用者新增自訂名稱選項；欄位本身為自由文字，不因此限制為固定枚舉值"]
-  icon                string [note: "自訂交通工具的圖示，選填；若未填寫，前端以 mode 的名稱文字顯示代替。預設六個選項的圖示由前端內建提供，不寫入此欄位"]
+  mode                string [not null, note: "交通工具名稱，必填，trim 後不可為空字串；前端以下拉選單呈現 walking / driving / flight / bus / train / metro（走路 / 開車 / 飛機 / 公車 / 火車 / 地鐵）六個預設選項，並允許使用者新增自訂名稱選項；欄位本身為自由文字，不因此限制為固定枚舉值"]
+  icon                string [note: "自訂交通工具的圖示，選填；若未填寫，前端以 mode 的名稱文字顯示代替。預設六個選項的圖示由前端內建提供，不寫入此欄位。僅適用於自訂交通工具（mode 非預設選項），編輯交通時間時可與名稱一併或單獨修改"]
 
   Note: '''
   行程與行程之間的交通時間，用於時間軸計算。
   刪除行程時，接在該行程之後的交通時間一併刪除（cascade delete）。
   跨屬性不變條件：拖曳調整行程順序時，交通時間依附於原本的順序位置，不隨行程本體移動；系統需將 after_activity_id 重新指向調整後排在該順序位置的行程。
+  跨屬性不變條件：mode 為六個預設選項（walking / driving / flight / bus / train / metro）之一時，icon 必為空；編輯時將 mode 由自訂名稱改為預設選項，系統自動清除 icon。
   '''
 }
 
