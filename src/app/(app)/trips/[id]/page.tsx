@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { DayTabsNav } from "@/components/trips/day-tabs-nav";
 import { AddActivityDialog } from "@/components/trips/add-activity-dialog";
 import { ActivityList } from "@/components/trips/activity-list";
+import { DayStartTimeDialog } from "@/components/trips/day-start-time-dialog";
 
 function formatDate(date: string) {
   const [, month, day] = date.split("-");
@@ -81,11 +82,7 @@ export default async function TripPage({
                 <h2 className="text-lg font-semibold">
                   第 {day.order} 天 · {formatDate(day.date)}
                 </h2>
-                {day.start_time && (
-                  <p className="text-sm text-muted-foreground">
-                    出發時間：{day.start_time}
-                  </p>
-                )}
+                <DayStartTimeDialog dayId={day.id} startTime={day.start_time} />
               </div>
               <AddActivityDialog dayId={day.id} />
             </div>
