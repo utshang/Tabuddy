@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EditTransportDialog } from "@/components/trips/edit-transport-dialog";
+import { DeleteTransportDialog } from "@/components/trips/delete-transport-dialog";
 
 type Transport = {
   hours: number;
@@ -26,6 +27,7 @@ export function TransportActionsMenu({
   transport: Transport;
 }) {
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
     <>
@@ -38,6 +40,12 @@ export function TransportActionsMenu({
           <DropdownMenuItem onClick={() => setEditOpen(true)}>
             編輯
           </DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => setDeleteOpen(true)}
+          >
+            刪除
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -46,6 +54,11 @@ export function TransportActionsMenu({
         transport={transport}
         open={editOpen}
         onOpenChange={setEditOpen}
+      />
+      <DeleteTransportDialog
+        activityId={activityId}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
       />
     </>
   );

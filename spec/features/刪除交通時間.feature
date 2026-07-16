@@ -7,8 +7,8 @@ Feature: 刪除交通時間
       And 使用者 "Carol" 不是旅程 "大阪旅遊" 的成員
       And 旅程 "大阪旅遊" 日期 "2025-06-01" 有行程 "道頓堀"
       And 行程 "道頓堀" 之後的交通時間為
-        | hours | minutes | mode    |
-        | 1     | 5       | driving |
+        | hours | minutes | mode    | icon |
+        | 1     | 5       | driving |      |
       When 使用者對行程 "道頓堀" 之後的交通時間執行刪除
       Then 操作失敗
 
@@ -18,8 +18,8 @@ Feature: 刪除交通時間
       And 使用者 "Alice" 是旅程 "大阪旅遊" 的成員
       And 旅程 "大阪旅遊" 日期 "2025-06-01" 有行程 "道頓堀"
       And 行程 "道頓堀" 之後的交通時間為
-        | hours | minutes | mode    |
-        | 1     | 5       | driving |
+        | hours | minutes | mode    | icon |
+        | 1     | 5       | driving |      |
       When 使用者對行程 "道頓堀" 之後的交通時間執行刪除
       And 使用者確認刪除交通時間
       Then 行程 "道頓堀" 之後不存在交通時間
@@ -30,10 +30,10 @@ Feature: 刪除交通時間
       And 使用者 "Alice" 是旅程 "大阪旅遊" 的成員
       And 旅程 "大阪旅遊" 日期 "2025-06-01" 有行程 "道頓堀"
       And 行程 "道頓堀" 之後的交通時間為
-        | hours | minutes | mode    |
-        | 1     | 5       | driving |
+        | hours | minutes | mode    | icon |
+        | 1     | 5       | driving |      |
       When 使用者對行程 "道頓堀" 之後的交通時間執行刪除
       And 使用者取消刪除確認
       Then 行程 "道頓堀" 之後的交通時間為
-        | hours | minutes | mode    |
-        | 1     | 5       | driving |
+        | hours | minutes | mode    | icon |
+        | 1     | 5       | driving |      |

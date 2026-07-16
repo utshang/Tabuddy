@@ -148,3 +148,54 @@ export async function editTransport(
   revalidatePath(`/trips/${tripId}`);
   return { success: true };
 }
+
+export type DeleteTransportState = {
+  error?: string;
+  success?: boolean;
+};
+
+/**
+ * Feature: 刪除交通時間
+ * 對應規格：spec/features/刪除交通時間.feature
+ */
+export async function deleteTransport(
+  _prevState: DeleteTransportState,
+  formData: FormData,
+): Promise<DeleteTransportState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const afterActivityId = Number(formData.get("after_activity_id"));
+  const confirmDeletion = formData.get("confirm_deletion") === "true";
+
+  const transport = await prisma.transport.findUniqueOrThrow({
+    where: { after_activity_id: afterActivityId },
+    include: { after_activity: { include: { day: true } } },
+  });
+
+  const tripId = transport.after_activity.day.trip_id;
+
+  const membership = await prisma.tripMember.findUnique({
+    where: { trip_id_user_id: { trip_id: tripId, user_id: user.id } },
+  });
+
+  // Rule: 使用者必須是旅程成員
+  if (!membership) {
+    return { error: "你不是此旅程的成員" };
+  }
+
+  // Rule: 刪除交通時間需經使用者確認才會執行
+  if (!confirmDeletion) {
+    return { error: "請先確認刪除" };
+  }
+
+  // Rule: 成員可以刪除交通時間
+  await prisma.transport.delete({ where: { id: transport.id } });
+
+  revalidatePath(`/trips/${tripId}`);
+  return { success: true };
+}
