@@ -1,49 +1,54 @@
 # 釐清項目總覽
 
-> 本輪掃描對象：`spec/features/行程時間軸.feature`
+> 本輪掃描對象:`spec/features/新增開支.feature`
 
 ## 釐清項目統計
 
-- 資料模型相關：0 項
-- 功能模型相關：0 項
-- 總計：0 項
+- 資料模型相關:0 項
+- 功能模型相關:0 項
+- 總計:0 項
 
 ## 優先級分佈
 
-- High：0 項
-- Medium：0 項
-- Low：0 項
+- High:0 項
+- Medium:0 項
+- Low:0 項
 
 ## 建議釐清順序
 
-（本輪所有項目已全數解決）
+(本輪所有項目已全數解決)
 
 ## 釐清策略說明
 
-- 本輪掃描範圍：`spec/features/行程時間軸.feature`，交叉比對 `spec/erm.dbml` 的 `days`、`activities`、`transports` 實體，以及 `新增交通時間.feature`、`設定當日開始時間.feature`、`查看結算.feature`
-- 已檢查 `.clarify/resolved/`：「當日開始時間未設定時的時間軸計算」前輪已解決（視為 "08:00"），未重複建立
-- 未建立「非成員查看時間軸」釐清項目：`查看結算.feature` 同為查看類功能亦未列成員規則，成員讀取權限由 CLAUDE.md 安全模型（RLS + `trip_members`）統一把關，釐清不會改變實作
-- 本輪 3 個釐清項目皆已解決並歸檔：
-  1. 兩行程間未設定交通時間 → 視為 0 分鐘照常累計，已更新 `行程時間軸.feature`（新增 Rule + 2 Example）與 `erm.dbml`
-  2. 時間軸累計超過午夜 → 以 24 小時制取模顯示並標示隔天日期，已更新 `行程時間軸.feature`（新增 Rule + Example）
-  3. 最後一個行程之後的交通時間 → 照常顯示、不影響計算，已更新 `行程時間軸.feature`（新增 Rule + Example）與 `erm.dbml`
+- 本輪掃描範圍:`spec/features/新增開支.feature`,交叉比對 `spec/erm.dbml` 的 `expenses`、`expense_splits` 實體,以及 `查看結算.feature`
+- 已檢查 `.clarify/resolved/`:開支相關前輪僅「刪除旅程_存在未結清開支」,無重複提問
+- 本輪 9 個釐清項目皆已解決並歸檔:
+  1. 金額精度 → 允許至小數兩位,已更新 `erm.dbml`(amount note)與均分 Rule/Example(333.34/333.33/333.33)
+  2. 分攤金額零值 → 允許 0(ERM 改 >= 0),新增 Rule「分攤金額可為 0」與 2 個 Example
+  3. 均分尾差順序 → 依參與者加入旅程的先後順序,已更新 Rule、Given 句型與 `erm.dbml` 不變條件
+  4. 付款人與參與者關係 → 可代墊不參與分攤,新增 Rule「付款人不必是分攤參與者」與 Example
+  5. 參與者含非團員 → 操作失敗,新增 Rule「參與者必須皆為旅程團員」與 Example
+  6. 品項名稱空白字元 → trim 後為空視為未填寫,已更新 `erm.dbml` 與新增 Example
+  7. 自定義類別 → 名稱(trim 非空)+ 圖示(選填),比照交通工具 mode + icon 模式;`expenses` 新增 `category_icon` 欄位與跨屬性不變條件,新增空白類別 Example
+  8. 金額上限 → 無上限,已更新 `erm.dbml`
+  9. 預設日期時區 → 使用者裝置時區(前端帶入),已更新 `erm.dbml`
 
 ## 覆蓋度摘要
 
 | 分類 | 狀態 | 說明 |
 |------|------|------|
-| A1 實體完整性 | Clear | 時間軸為衍生計算結果，作用於既有 `days`、`activities`、`transports`，無新實體 |
-| A2 屬性定義 | Clear | 相關屬性皆有型別與 note 說明 |
-| A3 屬性值邊界條件 | Resolved | 累計超過 24:00 的呈現方式已釐清（取模 + 隔天日期） |
-| A4 跨屬性不變條件 | Resolved | 交通時間缺席時視為 0 分鐘，已寫入 `erm.dbml` transports Note |
-| A5 關係與唯一性 | Clear | activities 1:1 transports 已於 ERM 明確定義 |
-| A6 生命週期與狀態 | Clear | 時間軸為即時衍生值，無狀態 |
-| B1 功能識別 | Clear | 「查看時間軸」為獨立的讀取型交互，界線清楚 |
-| B2 規則完整性 | Resolved | 已新增「無交通視為 0」「跨午夜取模標日」「尾段交通照常顯示」三條 Rule |
-| B3 例子覆蓋度 | Clear | 所有 Rule 皆有 Example，無 #TODO |
-| B4 邊界條件覆蓋 | Resolved | 無交通、混合累計、跨午夜、尾段懸空交通皆已有對應 Example |
-| B5 錯誤與異常處理 | Clear | 查看類功能無使用者輸入；成員權限由 RLS 統一把關（同 `查看結算.feature` 慣例） |
-| C1 詞彙表 | Clear | 「時間軸」「開始時間」「停留時間」「交通時間」用語與相鄰 feature、ERM 一致 |
-| C2 術語衝突 | Clear | 無同義詞混用或同名異義 |
+| A1 實體完整性 | Clear | expenses、expense_splits 已建模,無隱含實體 |
+| A2 屬性定義 | Resolved | amount 精度(第 1 題)與 category 自定義規則(第 7 題,新增 category_icon 欄位)皆已釐清 |
+| A3 屬性值邊界條件 | Resolved | 分攤金額零值(第 2 題)、金額上限(第 8 題)、預設日期時區(第 9 題)皆已釐清 |
+| A4 跨屬性不變條件 | Resolved | splits 總和 = amount 原已定義;payer 可代墊不參與(第 4 題)、均分尾差順序(第 3 題)、category_icon 規則(第 7 題)已補入 |
+| A5 關係與唯一性 | Resolved | 外鍵與 unique 約束完整;expense_splits.user_id 限團員已明文化(第 5 題) |
+| A6 生命週期與狀態 | Clear | 開支無狀態機;刪除旅程 cascade 已於前輪解決 |
+| B1 功能識別 | Clear | 新增/編輯/刪除開支、查看結算界線清楚 |
+| B2 規則完整性 | Resolved | 參與者須為團員(第 5 題)、付款人不必參與分攤(第 4 題)、分攤金額可為 0(第 2 題)已明文化 |
+| B3 例子覆蓋度 | Clear | 所有 Rule 皆有 Example,無 #TODO;「付款人非團員」「金額為負」等無歧義補例留待 formulation |
+| B4 邊界條件覆蓋 | Resolved | 均分尾差順序、極小金額均分、名稱/類別 trim 邊界皆已有 Example |
+| B5 錯誤與異常處理 | Clear | 前置條件失敗一律「操作失敗」,與全案慣例一致 |
+| C1 詞彙表 | Clear | 「開支」「品項名稱」「分攤」「參與者」「付款人」與 ERM、查看結算一致 |
+| C2 術語衝突 | Clear | 「團員」「成員」混用但語意無歧義(trip_members 單一對應) |
 | D1 待決事項 | Clear | 無 #TODO 標記 |
-| D2 模糊描述 | Clear | 規則皆為可驗證的計算式，無未量化形容詞 |
+| D2 模糊描述 | Resolved | 「依序分配給前幾位」的「序」已明確為加入旅程的先後順序(第 3 題) |

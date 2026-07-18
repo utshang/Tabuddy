@@ -36,10 +36,12 @@ model Trip {
 }
 
 // 對應 spec/erm.dbml 的 trip_members：旅程與使用者的多對多關聯。
+// joined_at 記錄成員加入旅程的時間，作為開支均分尾差的分配順序依據（加入先後順序需可回溯）。
 model TripMember {
-  trip_id Int
-  user_id String @db.Uuid
-  role    String
+  trip_id   Int
+  user_id   String   @db.Uuid
+  role      String
+  joined_at DateTime @default(now()) @db.Timestamptz(6)
 
   trip Trip @relation(fields: [trip_id], references: [id], onDelete: Cascade)
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -95,15 +97,17 @@ model Transport {
 }
 
 // 對應 spec/erm.dbml 的 expenses：旅程帳本中的一筆開支。
-// 目前僅為刪除旅程的 cascade 刪除規則提供最小資料模型，尚未實作新增開支功能。
+// category_icon 僅適用於自定義類別；預設四類（住宿/吃喝/購物/其他）的圖示由前端內建提供，不寫入此欄位。
 model Expense {
-  id         Int     @id @default(autoincrement())
-  trip_id    Int
-  name       String
-  amount     Decimal @db.Decimal
-  category   String
-  payer_id   String  @db.Uuid
-  split_type String
+  id            Int     @id @default(autoincrement())
+  trip_id       Int
+  name          String
+  amount        Decimal @db.Decimal
+  category      String
+  category_icon String?
+  expense_date  String
+  payer_id      String  @db.Uuid
+  split_type    String
 
   trip   Trip           @relation(fields: [trip_id], references: [id], onDelete: Cascade)
   payer  User           @relation(fields: [payer_id], references: [id])

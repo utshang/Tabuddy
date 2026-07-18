@@ -6,6 +6,8 @@ import { DayTabsNav } from "@/components/trips/day-tabs-nav";
 import { AddActivityDialog } from "@/components/trips/add-activity-dialog";
 import { ActivityList } from "@/components/trips/activity-list";
 import { DayStartTimeDialog } from "@/components/trips/day-start-time-dialog";
+import { TripTabs } from "@/components/trips/trip-tabs";
+import { ExpenseLedger } from "@/components/trips/expense-ledger";
 
 function formatDate(date: string) {
   const [, month, day] = date.split("-");
@@ -40,6 +42,15 @@ export default async function TripPage({
           },
         },
       },
+      // 團員依加入旅程的先後順序排列（開支均分尾差的分配順序依據）
+      members: {
+        include: { user: true },
+        orderBy: [{ joined_at: "asc" }, { user_id: "asc" }],
+      },
+      expenses: {
+        orderBy: [{ expense_date: "desc" }, { id: "desc" }],
+        include: { payer: true, splits: true },
+      },
     },
   });
 
@@ -51,23 +62,28 @@ export default async function TripPage({
     dateLabel: formatDate(day.date),
   }));
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <Link
-          href="/dashboard"
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          ← 我的旅程
-        </Link>
-        <h1 className="mt-1 text-2xl font-bold text-primary tracking-tight">
-          {trip.name}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {trip.start_date} ~ {trip.end_date}
-        </p>
-      </div>
+  const members = trip.members.map((member) => ({
+    id: member.user_id,
+    name: member.user.name,
+    isMe: member.user_id === user.id,
+  }));
 
+  const expenses = trip.expenses.map((expense) => ({
+    id: expense.id,
+    name: expense.name,
+    amount: Number(expense.amount),
+    category: expense.category,
+    category_icon: expense.category_icon,
+    expense_date: expense.expense_date,
+    payerName: expense.payer.name,
+    payerIsMe: expense.payer_id === user.id,
+    myShare: Number(
+      expense.splits.find((split) => split.user_id === user.id)?.amount ?? 0,
+    ),
+  }));
+
+  const itinerary = (
+    <div className="space-y-6">
       <DayTabsNav days={dayTabs} />
 
       <div className="space-y-8">
@@ -96,6 +112,36 @@ export default async function TripPage({
           </section>
         ))}
       </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Link
+          href="/dashboard"
+          className="text-sm text-muted-foreground hover:underline"
+        >
+          ← 我的旅程
+        </Link>
+        <h1 className="mt-1 text-2xl font-bold text-primary tracking-tight">
+          {trip.name}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {trip.start_date} ~ {trip.end_date}
+        </p>
+      </div>
+
+      <TripTabs
+        itinerary={itinerary}
+        ledger={
+          <ExpenseLedger
+            tripId={trip.id}
+            expenses={expenses}
+            members={members}
+          />
+        }
+      />
     </div>
   );
 }
