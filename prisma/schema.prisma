@@ -63,13 +63,12 @@ model Day {
 }
 
 // 對應 spec/erm.dbml 的 activities：某一天的一個行程。
-// 目前僅為編輯旅程的 cascade 刪除規則提供最小資料模型，尚未實作新增/編輯/刪除行程功能。
 model Activity {
   id               Int     @id @default(autoincrement())
   day_id           Int
   name             String
   google_map_url   String?
-  duration_minutes Int?
+  duration_minutes Int
   note             String?
   order            Int
 
@@ -80,12 +79,15 @@ model Activity {
 }
 
 // 對應 spec/erm.dbml 的 transports：行程與行程之間的交通時間。
+// after_activity_id 的唯一性約束在資料庫層為 DEFERRABLE INITIALLY DEFERRED（見對應 migration），
+// 讓調整行程順序時可在同一筆交易內安全交換兩段交通時間的所屬行程。
 model Transport {
-  id                Int    @id @default(autoincrement())
-  after_activity_id Int    @unique
+  id                Int     @id @default(autoincrement())
+  after_activity_id Int     @unique
   hours             Int
   minutes           Int
   mode              String
+  icon              String?
 
   after_activity Activity @relation(fields: [after_activity_id], references: [id], onDelete: Cascade)
 

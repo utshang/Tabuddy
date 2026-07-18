@@ -1,5 +1,7 @@
 # 釐清項目總覽
 
+> 本輪掃描對象：`spec/features/行程時間軸.feature`
+
 ## 釐清項目統計
 
 - 資料模型相關：0 項
@@ -18,25 +20,30 @@
 
 ## 釐清策略說明
 
-- 本輪掃描範圍：`spec/features/加入旅程.feature`（及其連動的 `trips.invite_token`、`trip_members.role` 資料模型）
-- 1 項釐清已解決，歸檔於 `.clarify/resolved/features/`
+- 本輪掃描範圍：`spec/features/行程時間軸.feature`，交叉比對 `spec/erm.dbml` 的 `days`、`activities`、`transports` 實體，以及 `新增交通時間.feature`、`設定當日開始時間.feature`、`查看結算.feature`
+- 已檢查 `.clarify/resolved/`：「當日開始時間未設定時的時間軸計算」前輪已解決（視為 "08:00"），未重複建立
+- 未建立「非成員查看時間軸」釐清項目：`查看結算.feature` 同為查看類功能亦未列成員規則，成員讀取權限由 CLAUDE.md 安全模型（RLS + `trip_members`）統一把關，釐清不會改變實作
+- 本輪 3 個釐清項目皆已解決並歸檔：
+  1. 兩行程間未設定交通時間 → 視為 0 分鐘照常累計，已更新 `行程時間軸.feature`（新增 Rule + 2 Example）與 `erm.dbml`
+  2. 時間軸累計超過午夜 → 以 24 小時制取模顯示並標示隔天日期，已更新 `行程時間軸.feature`（新增 Rule + Example）
+  3. 最後一個行程之後的交通時間 → 照常顯示、不影響計算，已更新 `行程時間軸.feature`（新增 Rule + Example）與 `erm.dbml`
 
 ## 覆蓋度摘要
 
 | 分類 | 狀態 | 說明 |
 |------|------|------|
-| A1 實體完整性 | Clear | 加入旅程不涉及新實體 |
-| A2 屬性定義 | Clear | `invite_token`、`role` 定義已於 `建立旅程.feature` 解決 |
-| A3 屬性值邊界條件 | Clear | invite_token 格式錯誤與不存在的行為等價（皆為查無此 token），不構成需釐清的行為差異 |
-| A4 跨屬性不變條件 | Clear | 不涉及新的跨屬性計算 |
-| A5 關係與唯一性 | Clear | `trip_members` 的 `(trip_id, user_id)` 唯一性已由「重複加入不產生新記錄」規則涵蓋 |
-| A6 生命週期與狀態 | Clear | `trip_members` 無額外狀態欄位；移除成員/退出旅程不在本 feature 範圍內 |
-| B1 功能識別 | Clear | 交互時機與功能邊界明確，與「分享旅程」界線清楚 |
-| B2 規則完整性 | Resolved | 原為 Partial，已補上「重複加入時角色不被覆寫」規則 |
-| B3 例子覆蓋度 | Clear | 每條規則皆至少有一個 Example |
-| B4 邊界條件覆蓋 | Resolved | 原為 Partial，角色類別邊界（owner 重新點擊自己連結）已補上 Example |
-| B5 錯誤與異常處理 | Clear | 「操作失敗」表述與同類 feature 一致 |
-| C1 詞彙表 | Clear | 「分享連結」「invite_token」「角色」用語與 `分享旅程.feature`、`建立旅程.feature` 一致 |
+| A1 實體完整性 | Clear | 時間軸為衍生計算結果，作用於既有 `days`、`activities`、`transports`，無新實體 |
+| A2 屬性定義 | Clear | 相關屬性皆有型別與 note 說明 |
+| A3 屬性值邊界條件 | Resolved | 累計超過 24:00 的呈現方式已釐清（取模 + 隔天日期） |
+| A4 跨屬性不變條件 | Resolved | 交通時間缺席時視為 0 分鐘，已寫入 `erm.dbml` transports Note |
+| A5 關係與唯一性 | Clear | activities 1:1 transports 已於 ERM 明確定義 |
+| A6 生命週期與狀態 | Clear | 時間軸為即時衍生值，無狀態 |
+| B1 功能識別 | Clear | 「查看時間軸」為獨立的讀取型交互，界線清楚 |
+| B2 規則完整性 | Resolved | 已新增「無交通視為 0」「跨午夜取模標日」「尾段交通照常顯示」三條 Rule |
+| B3 例子覆蓋度 | Clear | 所有 Rule 皆有 Example，無 #TODO |
+| B4 邊界條件覆蓋 | Resolved | 無交通、混合累計、跨午夜、尾段懸空交通皆已有對應 Example |
+| B5 錯誤與異常處理 | Clear | 查看類功能無使用者輸入；成員權限由 RLS 統一把關（同 `查看結算.feature` 慣例） |
+| C1 詞彙表 | Clear | 「時間軸」「開始時間」「停留時間」「交通時間」用語與相鄰 feature、ERM 一致 |
 | C2 術語衝突 | Clear | 無同義詞混用或同名異義 |
-| D1 待決事項 | Clear | 無 TODO 標記 |
-| D2 模糊描述 | Clear | 無未量化形容詞 |
+| D1 待決事項 | Clear | 無 #TODO 標記 |
+| D2 模糊描述 | Clear | 規則皆為可驗證的計算式，無未量化形容詞 |

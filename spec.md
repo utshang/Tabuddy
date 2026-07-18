@@ -148,6 +148,9 @@
 - 成功加入時，以 Toast 顯示提示：「已成功加入旅程」
 - 重複加入（點擊已加入旅程的連結）時，以 Toast 顯示提示：「此旅程已經加入囉」
 
+## 行程時間軸 開始時間
+- 參考截圖：`doc/design-refs/schedule.jpg` 的出發時間 以及 `doc/design-refs/start-time.jpg`
+
 ## 行程
 
 - 參考截圖：`doc/design-refs/schedule.jpg`
