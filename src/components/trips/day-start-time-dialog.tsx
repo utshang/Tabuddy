@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Clock } from "lucide-react";
 import { toast } from "sonner";
 import { setDayStartTime } from "@/lib/actions/days";
+import { DEFAULT_START_TIME } from "@/lib/timeline";
 import {
   setDayStartTimeSchema,
   type SetDayStartTimeFormValues,
@@ -42,7 +43,7 @@ export function DayStartTimeDialog({
     formState: { errors },
   } = useForm<SetDayStartTimeFormValues>({
     resolver: zodResolver(setDayStartTimeSchema),
-    values: { day_id: dayId, start_time: startTime ?? "" },
+    values: { day_id: dayId, start_time: startTime ?? DEFAULT_START_TIME },
   });
 
   const onSubmit = handleSubmit(() => {
@@ -82,7 +83,7 @@ export function DayStartTimeDialog({
         }
       >
         <Clock />
-        {startTime ? `出發時間：${startTime}` : "設定開始時間"}
+        出發時間：{startTime ?? DEFAULT_START_TIME}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

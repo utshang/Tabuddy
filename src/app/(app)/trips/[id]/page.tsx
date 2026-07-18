@@ -87,7 +87,12 @@ export default async function TripPage({
               <AddActivityDialog dayId={day.id} />
             </div>
 
-            <ActivityList dayId={day.id} activities={day.activities} />
+            <ActivityList
+              dayId={day.id}
+              dayDate={day.date}
+              startTime={day.start_time}
+              activities={day.activities}
+            />
           </section>
         ))}
       </div>
