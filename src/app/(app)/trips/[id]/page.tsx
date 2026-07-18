@@ -75,10 +75,15 @@ export default async function TripPage({
     category: expense.category,
     category_icon: expense.category_icon,
     expense_date: expense.expense_date,
+    payer_id: expense.payer_id,
     payerName: expense.payer.name,
     payerIsMe: expense.payer_id === user.id,
     myShare: Number(
       expense.splits.find((split) => split.user_id === user.id)?.amount ?? 0,
+    ),
+    split_type: expense.split_type as "even" | "custom",
+    splits: Object.fromEntries(
+      expense.splits.map((split) => [split.user_id, Number(split.amount)]),
     ),
   }));
 

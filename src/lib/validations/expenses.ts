@@ -48,6 +48,28 @@ export const addExpenseSchema = addExpenseFormSchema.extend({
   participants: z.array(z.string().min(1)).min(1, "參與分攤的團員至少一人"),
 });
 
+// Feature: 編輯開支
+// 表單純量欄位；與新增共用欄位規則，差異在於：
+// - 以 expense_id 取代 trip_id（所屬旅程由開支本身決定）
+// - Rule: 成員可以編輯開支的日期，日期不得為空（新增時未指定會預設為當天，編輯時必填）
+export const editExpenseFormSchema = addExpenseFormSchema
+  .omit({ trip_id: true, expense_date: true })
+  .extend({
+    expense_id: z.coerce.number().int(),
+    expense_date: z
+      .string()
+      .min(1, "開支日期不得為空")
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "開支日期格式須為 YYYY-MM-DD"),
+  });
+
+export type EditExpenseFormValues = z.input<typeof editExpenseFormSchema>;
+
+// action 用的完整 schema
+export const editExpenseSchema = editExpenseFormSchema.extend({
+  // Rule: 成員可以編輯分攤方式與參與者，參與分攤的團員至少一人
+  participants: z.array(z.string().min(1)).min(1, "參與分攤的團員至少一人"),
+});
+
 // 自訂分攤金額欄位：必填、>= 0（Rule: 分攤金額可為 0）、最多至小數第二位
 export const customSplitAmountSchema = z.coerce
   .number("請為每位參與者填寫分攤金額")

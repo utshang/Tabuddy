@@ -4,6 +4,7 @@ import {
   AddExpenseDialog,
   type ExpenseMember,
 } from "@/components/trips/add-expense-dialog";
+import { ExpenseActionsMenu } from "@/components/trips/expense-actions-menu";
 
 export type LedgerExpense = {
   id: number;
@@ -12,9 +13,13 @@ export type LedgerExpense = {
   category: string;
   category_icon: string | null;
   expense_date: string;
+  payer_id: string;
   payerName: string;
   payerIsMe: boolean;
   myShare: number;
+  split_type: "even" | "custom";
+  /** 既有分攤明細：user_id → 分攤金額（編輯開支預填用） */
+  splits: Record<string, number>;
 };
 
 // 帳本「開支」區塊（對照 doc/design-refs/expense.jpg）：
@@ -107,6 +112,7 @@ export function ExpenseLedger({
                     <p className="text-lg font-semibold tracking-tight">
                       {formatYen(expense.amount)}
                     </p>
+                    <ExpenseActionsMenu expense={expense} members={members} />
                   </li>
                 ))}
               </ul>

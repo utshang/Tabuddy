@@ -99,7 +99,7 @@ Table expenses {
   name       string [not null, note: "品項名稱，必填，trim 後不可為空字串"]
   amount     float  [not null, note: "開支金額，必填，> 0，最多至小數第二位，無上限"]
   category   string [not null, note: "類別名稱，必填，trim 後不可為空字串；前端以選單呈現 住宿 / 吃喝 / 購物 / 其他 四個預設選項，並允許使用者新增自定義名稱選項；欄位本身為自由文字，不因此限制為固定枚舉值"]
-  category_icon string [note: "自定義類別的圖示，選填；若未填寫，前端以類別名稱文字顯示代替。預設四個選項的圖示由前端內建提供，不寫入此欄位。僅適用於自定義類別（category 非預設選項）"]
+  category_icon string [note: "自定義類別的圖示，選填；若未填寫，前端以類別名稱文字顯示代替。預設四個選項的圖示由前端內建提供，不寫入此欄位。僅適用於自定義類別（category 非預設選項），編輯開支時可與類別名稱一併或單獨修改"]
   expense_date date [not null, note: "開支日期，必填；未指定時預設為當天（以使用者裝置時區判定，由前端帶入預設值），不限制須落在旅程起迄日範圍內"]
   payer_id   int    [not null, note: "付款人，為該旅程的團員之一；不要求同時為該筆開支的分攤參與者（可代墊不參與分攤）"]
   split_type string [not null, note: "分攤方式：even（均分）或 custom（自訂金額）"]
