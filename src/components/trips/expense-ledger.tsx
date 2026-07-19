@@ -24,7 +24,7 @@ export type LedgerExpense = {
 
 // 帳本「開支」區塊（對照 doc/design-refs/expense.jpg）：
 // 上方為 我的開支 / 總支出 總覽，開支依日期分組顯示，底部為新增開支按鈕。
-// 「結餘」屬查看結算功能，本階段尚未實作，僅保留切換的視覺佔位。
+// 開支／結餘 的切換由 LedgerTabs 負責，「結餘」見 SettlementView（查看結算）。
 export function ExpenseLedger({
   tripId,
   expenses,
@@ -50,20 +50,6 @@ export function ExpenseLedger({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-center">
-        <div className="inline-flex items-center rounded-lg bg-muted p-[3px] text-sm text-muted-foreground">
-          <span className="rounded-md bg-background px-4 py-1 font-medium text-foreground shadow-sm">
-            開支
-          </span>
-          <span
-            className="cursor-not-allowed px-4 py-1 opacity-50"
-            title="結餘（即將推出）"
-          >
-            結餘
-          </span>
-        </div>
-      </div>
-
       <div className="grid grid-cols-2 gap-4 text-center">
         <div>
           <p className="text-sm text-muted-foreground">我的開支</p>

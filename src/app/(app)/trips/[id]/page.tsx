@@ -8,6 +8,10 @@ import { ActivityList } from "@/components/trips/activity-list";
 import { DayStartTimeDialog } from "@/components/trips/day-start-time-dialog";
 import { TripTabs } from "@/components/trips/trip-tabs";
 import { ExpenseLedger } from "@/components/trips/expense-ledger";
+import { LedgerTabs } from "@/components/trips/ledger-tabs";
+import { SettlementView } from "@/components/trips/settlement-view";
+import { computeBalancesCents, settleGreedyCents } from "@/lib/settlement";
+import { fromCents, toCents } from "@/lib/expense-split";
 
 function formatDate(date: string) {
   const [, month, day] = date.split("-");
@@ -30,6 +34,7 @@ export default async function TripPage({
   if (!user || Number.isNaN(tripId)) notFound();
 
   // Rule: 不是自己建立或加入的旅程，無法查看
+  // Feature: 查看結算 / Rule: 使用者必須是旅程成員（非成員操作失敗 → notFound）
   const trip = await prisma.trip.findFirst({
     where: { id: tripId, members: { some: { user_id: user.id } } },
     include: {
@@ -87,6 +92,52 @@ export default async function TripPage({
     ),
   }));
 
+  /**
+   * Feature: 查看結算
+   * 對應規格：spec/features/查看結算.feature
+   * 結算為即時計算的衍生資料（不持久化）：以純函式從團員與開支算出餘額與結清清單。
+   * trip.members 已依加入旅程的先後順序排序（淨額相同時的配對順序依據）。
+   */
+  const balances = computeBalancesCents(
+    trip.members.map((member) => member.user_id),
+    trip.expenses.map((expense) => ({
+      payerId: expense.payer_id,
+      amountCents: toCents(Number(expense.amount)),
+      splits: expense.splits.map((split) => ({
+        userId: split.user_id,
+        amountCents: toCents(Number(split.amount)),
+      })),
+    })),
+  );
+  console.log(balances);
+  const transfers = settleGreedyCents(balances);
+
+  const memberById = new Map(members.map((member) => [member.id, member]));
+  console.log(memberById);
+
+  const settlementMembers = balances.map((balance) => {
+    const member = memberById.get(balance.userId)!;
+    return {
+      id: balance.userId,
+      name: member.name,
+      isMe: member.isMe,
+      paid: fromCents(balance.paidCents),
+      share: fromCents(balance.shareCents),
+      net: fromCents(balance.netCents),
+    };
+  });
+  const settlementTransfers = transfers.map((transfer) => {
+    const from = memberById.get(transfer.fromUserId)!;
+    const to = memberById.get(transfer.toUserId)!;
+    return {
+      fromName: from.name,
+      fromIsMe: from.isMe,
+      toName: to.name,
+      toIsMe: to.isMe,
+      amount: fromCents(transfer.amountCents),
+    };
+  });
+
   const itinerary = (
     <div className="space-y-6">
       <DayTabsNav days={dayTabs} />
@@ -140,10 +191,21 @@ export default async function TripPage({
       <TripTabs
         itinerary={itinerary}
         ledger={
-          <ExpenseLedger
-            tripId={trip.id}
-            expenses={expenses}
-            members={members}
+          <LedgerTabs
+            expenses={
+              <ExpenseLedger
+                tripId={trip.id}
+                expenses={expenses}
+                members={members}
+              />
+            }
+            settlement={
+              <SettlementView
+                tripId={trip.id}
+                members={settlementMembers}
+                transfers={settlementTransfers}
+              />
+            }
           />
         }
       />
