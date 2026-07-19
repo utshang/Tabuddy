@@ -117,14 +117,17 @@ export function AddExpenseDialog({
   // Rule: 自訂金額時各參與者分攤金額之和必須等於開支金額（即時顯示差額）
   const customSummary = (() => {
     if (splitType !== "custom") return null;
+    // 把所有勾選的參與者各自填的自訂分攤金額逐一 × 100 加總起來，同樣以分為單位
     const sumCents = checkedMembers.reduce((sum, m) => {
       const value = Number(customAmounts[m.id] ?? "");
       if (!Number.isFinite(value)) return sum;
       return sum + Math.round(value * 100);
     }, 0);
+    // 使用者在「金額」欄位輸入的開支總額，換算成分。例如輸入 350.5 元 → 35050
     const amountCents = Number.isFinite(watchedAmount)
       ? Math.round(watchedAmount * 100)
       : 0;
+    // 自訂金額時各參與者分攤金額之和必須等於開支金額
     return { sum: sumCents / 100, diff: (amountCents - sumCents) / 100 };
   })();
 
