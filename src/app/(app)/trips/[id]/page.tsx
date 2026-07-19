@@ -109,11 +109,10 @@ export default async function TripPage({
       })),
     })),
   );
-  console.log(balances);
+
   const transfers = settleGreedyCents(balances);
 
   const memberById = new Map(members.map((member) => [member.id, member]));
-  console.log(memberById);
 
   const settlementMembers = balances.map((balance) => {
     const member = memberById.get(balance.userId)!;
