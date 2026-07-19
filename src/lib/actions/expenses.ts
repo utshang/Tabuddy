@@ -164,6 +164,60 @@ export async function addExpense(
   return { success: true };
 }
 
+export type DeleteExpenseState = {
+  error?: string;
+  success?: boolean;
+};
+
+/**
+ * Feature: 刪除開支
+ * 對應規格：spec/features/刪除開支.feature
+ */
+export async function deleteExpense(
+  _prevState: DeleteExpenseState,
+  formData: FormData,
+): Promise<DeleteExpenseState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const expenseId = Number(formData.get("expense_id"));
+  const submittedTripId = Number(formData.get("trip_id"));
+  const confirmDeletion = formData.get("confirm_deletion") === "true";
+
+  // Rule: 開支已被其他成員先行刪除時，刪除操作視為成功（冪等）
+  // （開支已不存在時，改以前端傳入的 trip_id 檢查成員資格，通過後回報成功）
+  const expense = await prisma.expense.findUnique({
+    where: { id: expenseId },
+  });
+  const trip_id = expense?.trip_id ?? submittedTripId;
+
+  // Rule: 使用者必須是旅程成員
+  const membership = await prisma.tripMember.findUnique({
+    where: { trip_id_user_id: { trip_id, user_id: user.id } },
+  });
+  if (!membership) {
+    return { error: "你不是此旅程的成員" };
+  }
+
+  // Rule: 刪除開支需經使用者確認才會執行
+  if (!confirmDeletion) {
+    return { error: "請先確認刪除" };
+  }
+
+  // Rule: 成員可以刪除開支，不限付款人或分攤參與者
+  // Rule: 刪除開支後其分攤明細一併刪除
+  // （由資料庫層級的 ON DELETE CASCADE 外鍵約束保證）
+  // deleteMany：開支在確認前一刻被其他成員刪除時影響 0 列，不拋錯，維持冪等成功
+  await prisma.expense.deleteMany({ where: { id: expenseId } });
+
+  revalidatePath(`/trips/${trip_id}`);
+  return { success: true };
+}
+
 export type EditExpenseState = {
   error?: string;
   success?: boolean;

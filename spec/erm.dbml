@@ -107,6 +107,7 @@ Table expenses {
   Note: '''
   旅程帳本中的一筆開支。
   expenses 1:N expense_splits
+  刪除開支時，關聯的 expense_splits 一併刪除（cascade delete）。
   跨屬性不變條件：所有關聯 expense_splits 的 amount 總和 = expenses.amount
   跨屬性不變條件：split_type 為 even 時，金額平均分配至小數第二位，尾差以 0.01 依參與者加入旅程的先後順序分配給前幾位參與者。
   跨屬性不變條件：category 為四個預設選項（住宿 / 吃喝 / 購物 / 其他）之一時，category_icon 必為空；編輯時將 category 由自定義名稱改為預設選項，系統自動清除 category_icon。

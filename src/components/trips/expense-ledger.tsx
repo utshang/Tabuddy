@@ -112,7 +112,11 @@ export function ExpenseLedger({
                     <p className="text-lg font-semibold tracking-tight">
                       {formatYen(expense.amount)}
                     </p>
-                    <ExpenseActionsMenu expense={expense} members={members} />
+                    <ExpenseActionsMenu
+                      expense={expense}
+                      tripId={tripId}
+                      members={members}
+                    />
                   </li>
                 ))}
               </ul>
