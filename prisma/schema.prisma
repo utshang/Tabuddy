@@ -28,9 +28,10 @@ model Trip {
   end_date    String
   invite_token String @unique
 
-  members  TripMember[]
-  days     Day[]
-  expenses Expense[]
+  members        TripMember[]
+  days           Day[]
+  expenses       Expense[]
+  expense_splits ExpenseSplit[]
 
   @@map("trips")
 }
@@ -120,12 +121,15 @@ model Expense {
 model ExpenseSplit {
   id         Int     @id @default(autoincrement())
   expense_id Int
+  trip_id    Int // denormalize 自 expense.trip_id，供 Supabase Realtime filter 依 trip 過濾用
   user_id    String  @db.Uuid
   amount     Decimal @db.Decimal
 
   expense Expense @relation(fields: [expense_id], references: [id], onDelete: Cascade)
+  trip    Trip    @relation(fields: [trip_id], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [user_id], references: [id])
 
   @@unique([expense_id, user_id])
+  @@index([trip_id])
   @@map("expense_splits")
 }

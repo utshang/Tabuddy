@@ -117,11 +117,13 @@ Table expenses {
 Table expense_splits {
   id         int   [pk, increment]
   expense_id int   [not null, note: "關聯開支"]
+  trip_id    int   [not null, note: "冗餘欄位，與 expense.trip_id 相同；非業務規則，供 Supabase Realtime 依 trip 過濾訂閱事件用"]
   user_id    int   [not null, note: "參與分攤的團員，必須為該旅程的團員；任一參與者非團員時整筆開支不建立（操作失敗）"]
   amount     float [not null, note: "此成員的分攤金額，>= 0，最多至小數第二位；0 為有效分攤明細（該參與者不分擔費用但保留於名單中）"]
 
   indexes {
     (expense_id, user_id) [unique, note: "一筆開支中同一使用者只有一筆分攤明細"]
+    trip_id
   }
 
   Note: "記錄某筆開支中每位參與者的分攤金額。"
@@ -135,4 +137,5 @@ ref: transports.after_activity_id - activities.id
 ref: expenses.trip_id        > trips.id
 ref: expenses.payer_id       > users.id
 ref: expense_splits.expense_id > expenses.id
+ref: expense_splits.trip_id    > trips.id
 ref: expense_splits.user_id    > users.id
