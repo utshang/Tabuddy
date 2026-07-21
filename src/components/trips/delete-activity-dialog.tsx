@@ -20,7 +20,13 @@ type Activity = {
   name: string;
 };
 
-export function DeleteActivityDialog({ activity }: { activity: Activity }) {
+export function DeleteActivityDialog({
+  tripId,
+  activity,
+}: {
+  tripId: number;
+  activity: Activity;
+}) {
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string>();
   const [isPending, startTransition] = useTransition();
@@ -31,6 +37,7 @@ export function DeleteActivityDialog({ activity }: { activity: Activity }) {
     startTransition(async () => {
       const formData = new FormData();
       formData.set("activity_id", String(activity.id));
+      formData.set("trip_id", String(tripId));
       formData.set("confirm_deletion", "true");
 
       const result = await deleteActivity({}, formData);

@@ -67,3 +67,10 @@ Feature: 編輯行程
       And 該行程的 google_map_url 為 "https://maps.google.com/shinsaibashi"
       And 該行程的 duration_minutes 為 45
       And 該行程的 note 為 "推薦晚上去"
+
+  Rule: 其他團員編輯行程後，正在查看行程的使用者即時看到更新後的內容
+    Example: 他人編輯行程名稱後即時反映
+      Given 使用者 "B" 正在查看旅程 "大阪旅遊" 的行程
+      And 旅程 "大阪旅遊" 日期 "2025-06-01" 有行程 "道頓堀"
+      When 使用者 "A" 對行程 "道頓堀" 執行編輯，將名稱改為 "心齋橋"
+      Then 使用者 "B" 看到該行程的 name 為 "心齋橋"

@@ -1,6 +1,5 @@
-"use client";
+"use client"
 
-import { useState, useTransition } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -9,117 +8,116 @@ import {
   closestCenter,
   useSensor,
   useSensors,
-} from "@dnd-kit/core";
+} from "@dnd-kit/core"
 import {
   SortableContext,
-  arrayMove,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, MapPin } from "lucide-react";
-import { toast } from "sonner";
-import { reorderActivity } from "@/lib/actions/activities";
-import { Card, CardContent } from "@/components/ui/card";
-import { EditActivityDialog } from "@/components/trips/edit-activity-dialog";
-import { DeleteActivityDialog } from "@/components/trips/delete-activity-dialog";
-import { AddTransportDialog } from "@/components/trips/add-transport-dialog";
-import { TransportActionsMenu } from "@/components/trips/transport-actions-menu";
-import { getTransportIcon } from "@/lib/transport-modes";
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import { GripVertical, MapPin } from "lucide-react"
+import { toast } from "sonner"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { reorderActivity } from "@/lib/actions/activities"
+import { Card, CardContent } from "@/components/ui/card"
+import { EditActivityDialog } from "@/components/trips/edit-activity-dialog"
+import { DeleteActivityDialog } from "@/components/trips/delete-activity-dialog"
+import { AddTransportDialog } from "@/components/trips/add-transport-dialog"
+import { TransportActionsMenu } from "@/components/trips/transport-actions-menu"
+import { getTransportIcon } from "@/lib/transport-modes"
 import {
   computeDayTimeline,
   type ActivityTimeline,
   type TimelineSlot,
-} from "@/lib/timeline";
-
-type Transport = {
-  hours: number;
-  minutes: number;
-  mode: string;
-  icon: string | null;
-};
-
-type Activity = {
-  id: number;
-  name: string;
-  google_map_url: string | null;
-  duration_minutes: number;
-  note: string | null;
-  order: number;
-  transport?: Transport | null;
-};
+} from "@/lib/timeline"
+import { applyReorder, type CachedActivity, type CachedDay } from "@/lib/itinerary-cache"
+import { itineraryQueryKey } from "@/lib/queries/itinerary"
 
 export function ActivityList({
+  tripId,
   dayId,
   dayDate,
   startTime,
   activities,
 }: {
-  dayId: number;
-  dayDate: string;
-  startTime: string | null;
-  activities: Activity[];
+  tripId: number
+  dayId: number
+  dayDate: string
+  startTime: string | null
+  activities: CachedActivity[]
 }) {
-  const [items, setItems] = useState(activities);
-  // 伺服器重新驗證送來新的 activities 時（例如其他成員的異動），同步回本地狀態
-  const [syncedActivities, setSyncedActivities] = useState(activities);
-  if (activities !== syncedActivities) {
-    setSyncedActivities(activities);
-    setItems(activities);
-  }
-  const [, startTransition] = useTransition();
+  const queryClient = useQueryClient()
+  const queryKey = itineraryQueryKey(tripId)
+
+  // Rule: 成員拖曳後行程順序更新（樂觀更新，失敗時回滾）
+  // 其他團員的異動也會透過 useItineraryRealtime 局部更新同一份 cache，故不需另外 invalidate
+  // onMutate 先「假裝成功」讓畫面立即更新，mutationFn 才是真正打 API；如果 mutationFn 失敗，onError 就用 onMutate 存的 previous 把 cache 復原
+  // setQueryData 負責「寫入 cache」，applyReorder 負責「算出寫入的內容」——把 server 端 reorderActivity 的排序邏輯在前端本地重算一次，讓拖曳當下畫面就先更新，之後才等 server 真正確認
+  const reorderMutation = useMutation({
+    mutationFn: async ({
+      activityId,
+      targetOrder,
+    }: {
+      activityId: number
+      targetOrder: number
+    }) => {
+      const formData = new FormData()
+      formData.set("activity_id", String(activityId))
+      formData.set("target_order", String(targetOrder))
+
+      const result = await reorderActivity({}, formData)
+      if (result.error) throw new Error(result.error)
+    },
+    onMutate: async ({ activityId, targetOrder }) => {
+      await queryClient.cancelQueries({ queryKey }) //避免正在進行的 refetch 蓋掉樂觀更新
+      const previous = queryClient.getQueryData<CachedDay[]>(queryKey) //目前 cache 的快照
+      queryClient.setQueryData<CachedDay[]>(queryKey, (days) => //寫入 cache
+        days ? applyReorder(days, dayId, activityId, targetOrder) : days, //applyReorder純函式，接收目前的 CachedDay[] 快照，算出「拖曳後應該長什麼樣子」的新版本
+      )
+      return { previous }
+    },
+    onError: (error, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous)
+      toast.error(error instanceof Error ? error.message : "調整行程順序失敗")
+    },
+  })
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
-  );
+  )
 
   function handleDragEnd(event: DragEndEvent) {
     //active 是被拖曳的項目，over 是放開時所在位置的項目
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    const { active, over } = event
+    if (!over || active.id === over.id) return
 
-    const fromIndex = items.findIndex((a) => a.id === active.id);
-    const toIndex = items.findIndex((a) => a.id === over.id);
-    if (fromIndex === -1 || toIndex === -1) return;
+    const toIndex = activities.findIndex((a) => a.id === over.id)
+    if (toIndex === -1) return
 
-    const previousItems = items;
-    //把陣列中的元素從 fromIndex 移到 toIndex，回傳新陣列（不改動原陣列）
-    const nextItems = arrayMove(items, fromIndex, toIndex);
-    setItems(nextItems);
-
-    // Rule: 成員拖曳後行程順序更新（樂觀更新，失敗時回滾）
-    startTransition(async () => {
-      const formData = new FormData();
-      formData.set("activity_id", String(active.id));
-      formData.set("target_order", String(toIndex + 1));
-
-      const result = await reorderActivity({}, formData);
-
-      if (result.error) {
-        setItems(previousItems);
-        toast.error(result.error);
-      }
-    });
+    reorderMutation.mutate({
+      activityId: Number(active.id),
+      targetOrder: toIndex + 1,
+    })
   }
 
-  if (items.length === 0) {
+  if (activities.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
         這天還沒有行程
       </div>
-    );
+    )
   }
 
   // Feature: 行程時間軸（spec/features/行程時間軸.feature）
-  // 依當日開始時間、停留時間與交通時間計算；拖曳行程後 items 改變，時間軸跟著重新計算
+  // 依當日開始時間、停留時間與交通時間計算；activities 改變時（拖曳、他人異動）時間軸跟著重新計算
   const timelines = computeDayTimeline(
     { date: dayDate, start_time: startTime },
-    items,
-  );
+    activities,
+  )
 
   return (
     <DndContext
@@ -129,24 +127,25 @@ export function ActivityList({
       onDragEnd={handleDragEnd}
     >
       <SortableContext
-        items={items.map((a) => a.id)}
+        items={activities.map((a) => a.id)}
         strategy={verticalListSortingStrategy}
       >
         <ul>
-          {items.map((activity, index) => (
+          {activities.map((activity, index) => (
             <SortableActivityItem
               key={activity.id}
+              tripId={tripId}
               activity={activity}
               index={index}
               timeline={timelines[index]}
               dayDate={dayDate}
-              isLast={index === items.length - 1}
+              isLast={index === activities.length - 1}
             />
           ))}
         </ul>
       </SortableContext>
     </DndContext>
-  );
+  )
 }
 
 // 時間軸左側的時間標籤；跨過午夜時於時間下方標示隔天日期
@@ -154,8 +153,8 @@ function TimelineLabel({
   slot,
   dayDate,
 }: {
-  slot: TimelineSlot | null;
-  dayDate: string;
+  slot: TimelineSlot | null
+  dayDate: string
 }) {
   return (
     <div className="flex w-11 shrink-0 flex-col items-end text-right">
@@ -170,26 +169,28 @@ function TimelineLabel({
         </>
       )}
     </div>
-  );
+  )
 }
 
 function formatShortDate(date: string) {
-  const [, month, day] = date.split("-");
-  return `${Number(month)}/${Number(day)}`;
+  const [, month, day] = date.split("-")
+  return `${Number(month)}/${Number(day)}`
 }
 
 function SortableActivityItem({
+  tripId,
   activity,
   index,
   timeline,
   dayDate,
   isLast,
 }: {
-  activity: Activity;
-  index: number;
-  timeline: ActivityTimeline;
-  dayDate: string;
-  isLast: boolean;
+  tripId: number
+  activity: CachedActivity
+  index: number
+  timeline: ActivityTimeline
+  dayDate: string
+  isLast: boolean
 }) {
   const {
     attributes,
@@ -198,7 +199,7 @@ function SortableActivityItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: activity.id });
+  } = useSortable({ id: activity.id })
 
   return (
     <li
@@ -253,7 +254,7 @@ function SortableActivityItem({
               </div>
               <div className="flex items-center gap-1">
                 <EditActivityDialog activity={activity} />
-                <DeleteActivityDialog activity={activity} />
+                <DeleteActivityDialog tripId={tripId} activity={activity} />
               </div>
             </CardContent>
           </Card>
@@ -292,5 +293,5 @@ function SortableActivityItem({
         </div>
       </div>
     </li>
-  );
+  )
 }
