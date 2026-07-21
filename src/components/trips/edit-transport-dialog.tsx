@@ -1,9 +1,10 @@
 "use client"
 
-import { useRef, useState, useTransition } from "react"
+import { useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { editTransport } from "@/lib/actions/transports"
 import {
   editTransportSchema,
@@ -21,15 +22,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { TRANSPORT_MODE_PRESETS, isPresetMode } from "@/lib/transport-modes"
+import { applyTransportEvent, type CachedDay, type CachedTransport } from "@/lib/itinerary-cache"
+import { itineraryQueryKey } from "@/lib/queries/itinerary"
 
 const CUSTOM_OPTION = "__custom__"
-
-type Transport = {
-  hours: number
-  minutes: number
-  mode: string
-  icon: string | null
-}
 
 export function EditTransportDialog({
   activityId,
@@ -38,12 +34,13 @@ export function EditTransportDialog({
   onOpenChange,
 }: {
   activityId: number
-  transport: Transport
+  transport: CachedTransport
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const [serverError, setServerError] = useState<string>()
-  const [isPending, startTransition] = useTransition()
+  const queryClient = useQueryClient()
+  const queryKey = itineraryQueryKey(transport.trip_id)
   const initialModeOption = isPresetMode(transport.mode)
     ? transport.mode
     : CUSTOM_OPTION
@@ -94,19 +91,29 @@ export function EditTransportDialog({
     }
   }
 
-  const onSubmit = handleSubmit(() => {
-    setServerError(undefined)
-    startTransition(async () => {
-      const result = await editTransport({}, new FormData(formRef.current!))
-
-      if (result.error) {
-        setServerError(result.error)
-        return
-      }
-
+  // Rule: 編輯交通時間可同時修改任意欄位組合
+  // 圖示是否清除的規則在 server 端 resolveEditedTransportIcon 判斷，故在 onSuccess 用 server 回傳的實際資料寫入 cache，而非在前端複製一份判斷邏輯
+  const mutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await editTransport({}, formData)
+      if (result.error) throw new Error(result.error)
+      return result.transport!
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<CachedDay[]>(queryKey, (days) =>
+        days ? applyTransportEvent(days, "UPDATE", updated) : days,
+      )
       toast.success("交通時間已更新")
       onOpenChange(false)
-    })
+    },
+    onError: (error) => {
+      setServerError(error instanceof Error ? error.message : "編輯交通時間失敗")
+    },
+  })
+
+  const onSubmit = handleSubmit(() => {
+    setServerError(undefined)
+    mutation.mutate(new FormData(formRef.current!))
   })
 
   return (
@@ -235,8 +242,8 @@ export function EditTransportDialog({
           )}
 
           <DialogFooter>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "儲存中…" : "儲存"}
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? "儲存中…" : "儲存"}
             </Button>
           </DialogFooter>
         </form>

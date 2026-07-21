@@ -14,6 +14,16 @@ import { computeReorder } from "@/lib/reorder";
 export type AddActivityState = {
   error?: string;
   success?: boolean;
+  activity?: {
+    id: number;
+    day_id: number;
+    trip_id: number;
+    name: string;
+    google_map_url: string | null;
+    duration_minutes: number;
+    note: string | null;
+    order: number;
+  };
 };
 
 export async function addActivity(
@@ -52,13 +62,13 @@ export async function addActivity(
     return { error: "你不是此旅程的成員" };
   }
 
-  await prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx) => {
     // Rule: 新增的行程固定加入當天行程順序的最後
     const activityCount = await tx.activity.count({ where: { day_id } });
 
     // Rule: 成功新增後行程出現在對應旅程日期中
     // Rule: 新增行程時可一併填寫選填資訊
-    await tx.activity.create({
+    return await tx.activity.create({
       data: {
         day_id,
         trip_id: day.trip_id,
@@ -72,7 +82,7 @@ export async function addActivity(
   });
 
   revalidatePath(`/trips/${day.trip_id}`);
-  return { success: true };
+  return { success: true, activity: created };
 }
 
 export type EditActivityState = {

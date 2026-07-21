@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addActivity } from "@/lib/actions/activities";
 import {
   addActivitySchema,
@@ -23,12 +24,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { applyActivityEvent, type CachedDay } from "@/lib/itinerary-cache";
+import { itineraryQueryKey } from "@/lib/queries/itinerary";
 
-export function AddActivityDialog({ dayId }: { dayId: number }) {
+export function AddActivityDialog({
+  tripId,
+  dayId,
+}: {
+  tripId: number;
+  dayId: number;
+}) {
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string>();
-  const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const queryClient = useQueryClient();
+  const queryKey = itineraryQueryKey(tripId);
 
   const {
     register,
@@ -40,21 +50,32 @@ export function AddActivityDialog({ dayId }: { dayId: number }) {
     defaultValues: { day_id: dayId },
   });
 
-  const onSubmit = handleSubmit(() => {
-    setServerError(undefined);
-    startTransition(async () => {
-      const result = await addActivity({}, new FormData(formRef.current!));
-
-      if (result.error) {
-        setServerError(result.error);
-        return;
-      }
-
+  // Rule: 成功新增後行程出現在對應旅程日期中
+  // 新增的 id 由 server 產生，無法在送出前先假裝成功，故在 onSuccess 用 server 回傳的實際資料寫入 cache，
+  // 而非 onMutate 樂觀更新；Realtime 事件之後送達同一筆資料時，applyActivityEvent 以 id 比對覆蓋，不會重複
+  const mutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await addActivity({}, formData);
+      if (result.error) throw new Error(result.error);
+      return result.activity!;
+    },
+    onSuccess: (activity) => {
+      queryClient.setQueryData<CachedDay[]>(queryKey, (days) =>
+        days ? applyActivityEvent(days, "INSERT", activity) : days,
+      );
       toast.success("行程新增成功");
       formRef.current?.reset();
       reset({ day_id: dayId });
       setOpen(false);
-    });
+    },
+    onError: (error) => {
+      setServerError(error instanceof Error ? error.message : "新增行程失敗");
+    },
+  });
+
+  const onSubmit = handleSubmit(() => {
+    setServerError(undefined);
+    mutation.mutate(new FormData(formRef.current!));
   });
 
   return (
@@ -147,8 +168,8 @@ export function AddActivityDialog({ dayId }: { dayId: number }) {
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "新增中…" : "新增行程"}
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? "新增中…" : "新增行程"}
             </Button>
           </DialogFooter>
         </form>

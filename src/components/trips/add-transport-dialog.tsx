@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Route } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addTransport } from "@/lib/actions/transports";
 import {
   addTransportSchema,
@@ -23,16 +24,25 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { TRANSPORT_MODE_PRESETS } from "@/lib/transport-modes";
+import { applyTransportEvent, type CachedDay } from "@/lib/itinerary-cache";
+import { itineraryQueryKey } from "@/lib/queries/itinerary";
 
 const CUSTOM_OPTION = "__custom__";
 
-export function AddTransportDialog({ activityId }: { activityId: number }) {
+export function AddTransportDialog({
+  tripId,
+  activityId,
+}: {
+  tripId: number;
+  activityId: number;
+}) {
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string>();
-  const [isPending, startTransition] = useTransition();
   const [modeOption, setModeOption] = useState<string>(
     TRANSPORT_MODE_PRESETS[0].value,
   );
+  const queryClient = useQueryClient();
+  const queryKey = itineraryQueryKey(tripId);
   const formRef = useRef<HTMLFormElement>(null);
   const isCustomMode = modeOption === CUSTOM_OPTION;
 
@@ -77,20 +87,30 @@ export function AddTransportDialog({ activityId }: { activityId: number }) {
     }
   }
 
-  const onSubmit = handleSubmit(() => {
-    setServerError(undefined);
-    startTransition(async () => {
-      const result = await addTransport({}, new FormData(formRef.current!));
-
-      if (result.error) {
-        setServerError(result.error);
-        return;
-      }
-
+  // Rule: 成功新增後交通時間出現在對應行程之後
+  // 新增的 id 由 server 產生，故在 onSuccess 用 server 回傳的實際資料寫入 cache，而非 onMutate 樂觀更新
+  const mutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await addTransport({}, formData);
+      if (result.error) throw new Error(result.error);
+      return result.transport!;
+    },
+    onSuccess: (transport) => {
+      queryClient.setQueryData<CachedDay[]>(queryKey, (days) =>
+        days ? applyTransportEvent(days, "INSERT", transport) : days,
+      );
       toast.success("交通時間新增成功");
       resetForm();
       setOpen(false);
-    });
+    },
+    onError: (error) => {
+      setServerError(error instanceof Error ? error.message : "新增交通時間失敗");
+    },
+  });
+
+  const onSubmit = handleSubmit(() => {
+    setServerError(undefined);
+    mutation.mutate(new FormData(formRef.current!));
   });
 
   return (
@@ -217,8 +237,8 @@ export function AddTransportDialog({ activityId }: { activityId: number }) {
           )}
 
           <DialogFooter>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "新增中…" : "新增交通時間"}
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? "新增中…" : "新增交通時間"}
             </Button>
           </DialogFooter>
         </form>
