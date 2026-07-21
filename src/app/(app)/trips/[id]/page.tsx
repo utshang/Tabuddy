@@ -2,21 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { DayTabsNav } from "@/components/trips/day-tabs-nav";
-import { AddActivityDialog } from "@/components/trips/add-activity-dialog";
-import { ActivityList } from "@/components/trips/activity-list";
-import { DayStartTimeDialog } from "@/components/trips/day-start-time-dialog";
+import { ItineraryBoard } from "@/components/trips/itinerary-board";
 import { TripTabs } from "@/components/trips/trip-tabs";
 import { ExpenseLedger } from "@/components/trips/expense-ledger";
 import { LedgerTabs } from "@/components/trips/ledger-tabs";
 import { SettlementView } from "@/components/trips/settlement-view";
 import { computeBalancesCents, settleGreedyCents } from "@/lib/settlement";
 import { fromCents, toCents } from "@/lib/expense-split";
-
-function formatDate(date: string) {
-  const [, month, day] = date.split("-");
-  return `${Number(month)}/${Number(day)}`;
-}
 
 export default async function TripPage({
   params,
@@ -60,12 +52,6 @@ export default async function TripPage({
   });
 
   if (!trip) notFound();
-
-  const dayTabs = trip.days.map((day) => ({
-    id: day.id,
-    dayLabel: `第 ${day.order} 天`,
-    dateLabel: formatDate(day.date),
-  }));
 
   const members = trip.members.map((member) => ({
     id: member.user_id,
@@ -137,38 +123,7 @@ export default async function TripPage({
     };
   });
 
-  const itinerary = (
-    <div className="space-y-6">
-      <DayTabsNav days={dayTabs} />
-
-      <div className="space-y-8">
-        {trip.days.map((day) => (
-          <section
-            key={day.id}
-            id={`day-${day.id}`}
-            className="scroll-mt-20 space-y-3"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-semibold">
-                  第 {day.order} 天 · {formatDate(day.date)}
-                </h2>
-                <DayStartTimeDialog dayId={day.id} startTime={day.start_time} />
-              </div>
-              <AddActivityDialog dayId={day.id} />
-            </div>
-
-            <ActivityList
-              dayId={day.id}
-              dayDate={day.date}
-              startTime={day.start_time}
-              activities={day.activities}
-            />
-          </section>
-        ))}
-      </div>
-    </div>
-  );
+  const itinerary = <ItineraryBoard tripId={trip.id} initialDays={trip.days} />;
 
   return (
     <div className="space-y-6">

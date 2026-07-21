@@ -30,6 +30,8 @@ model Trip {
 
   members        TripMember[]
   days           Day[]
+  activities     Activity[]
+  transports     Transport[]
   expenses       Expense[]
   expense_splits ExpenseSplit[]
 
@@ -69,6 +71,7 @@ model Day {
 model Activity {
   id               Int     @id @default(autoincrement())
   day_id           Int
+  trip_id          Int // denormalize 自 day.trip_id，供 Supabase Realtime filter 依 trip 過濾用
   name             String
   google_map_url   String?
   duration_minutes Int
@@ -76,8 +79,10 @@ model Activity {
   order            Int
 
   day       Day        @relation(fields: [day_id], references: [id], onDelete: Cascade)
+  trip      Trip       @relation(fields: [trip_id], references: [id], onDelete: Cascade)
   transport Transport?
 
+  @@index([trip_id])
   @@map("activities")
 }
 
@@ -87,13 +92,16 @@ model Activity {
 model Transport {
   id                Int     @id @default(autoincrement())
   after_activity_id Int     @unique
+  trip_id           Int // denormalize 自 after_activity.trip_id，供 Supabase Realtime filter 依 trip 過濾用
   hours             Int
   minutes           Int
   mode              String
   icon              String?
 
   after_activity Activity @relation(fields: [after_activity_id], references: [id], onDelete: Cascade)
+  trip           Trip     @relation(fields: [trip_id], references: [id], onDelete: Cascade)
 
+  @@index([trip_id])
   @@map("transports")
 }
 

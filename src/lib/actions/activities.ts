@@ -61,6 +61,7 @@ export async function addActivity(
     await tx.activity.create({
       data: {
         day_id,
+        trip_id: day.trip_id,
         name,
         google_map_url,
         duration_minutes,
@@ -105,10 +106,14 @@ export async function editActivity(
 
   const { name, google_map_url, duration_minutes, note } = parsed.data;
 
-  const activity = await prisma.activity.findUniqueOrThrow({
+  // Rule: 行程已被其他成員刪除時，編輯操作失敗
+  const activity = await prisma.activity.findUnique({
     where: { id: activityId },
     include: { day: true },
   });
+  if (!activity) {
+    return { error: "找不到此行程" };
+  }
 
   const membership = await prisma.tripMember.findUnique({
     where: {
@@ -158,16 +163,18 @@ export async function deleteActivity(
 
   const activityId = Number(formData.get("activity_id"));
   const confirmDeletion = formData.get("confirm_deletion") === "true";
+  const submittedTripId = Number(formData.get("trip_id"));
 
-  const activity = await prisma.activity.findUniqueOrThrow({
+  // Rule: 行程已被其他成員先行刪除時，刪除操作視為成功（冪等）
+  // （行程已不存在時，改以前端傳入的 trip_id 檢查成員資格，通過後回報成功）
+  const activity = await prisma.activity.findUnique({
     where: { id: activityId },
     include: { day: true },
   });
+  const trip_id = activity?.day.trip_id ?? submittedTripId;
 
   const membership = await prisma.tripMember.findUnique({
-    where: {
-      trip_id_user_id: { trip_id: activity.day.trip_id, user_id: user.id },
-    },
+    where: { trip_id_user_id: { trip_id, user_id: user.id } },
   });
 
   // Rule: 使用者必須是旅程成員
@@ -180,29 +187,31 @@ export async function deleteActivity(
     return { error: "請先確認刪除" };
   }
 
-  await prisma.$transaction(async (tx) => {
-    // Rule: 成員可以刪除行程
-    // Rule: 刪除行程後接續的交通時間一併刪除
-    // （由資料庫層級的 ON DELETE CASCADE 外鍵約束保證）
-    await tx.activity.delete({ where: { id: activityId } });
+  if (activity) {
+    await prisma.$transaction(async (tx) => {
+      // Rule: 成員可以刪除行程
+      // Rule: 刪除行程後接續的交通時間一併刪除
+      // （由資料庫層級的 ON DELETE CASCADE 外鍵約束保證）
+      await tx.activity.delete({ where: { id: activityId } });
 
-    // Rule: 刪除行程後同一天其餘行程順序重新編號
-    const remaining = await tx.activity.findMany({
-      where: { day_id: activity.day_id },
-      orderBy: { order: "asc" },
+      // Rule: 刪除行程後同一天其餘行程順序重新編號
+      const remaining = await tx.activity.findMany({
+        where: { day_id: activity.day_id },
+        orderBy: { order: "asc" },
+      });
+
+      await Promise.all(
+        remaining.map((a, index) =>
+          tx.activity.update({
+            where: { id: a.id },
+            data: { order: index + 1 },
+          }),
+        ),
+      );
     });
+  }
 
-    await Promise.all(
-      remaining.map((a, index) =>
-        tx.activity.update({
-          where: { id: a.id },
-          data: { order: index + 1 },
-        }),
-      ),
-    );
-  });
-
-  revalidatePath(`/trips/${activity.day.trip_id}`);
+  revalidatePath(`/trips/${trip_id}`);
   return { success: true };
 }
 
@@ -233,10 +242,14 @@ export async function reorderActivity(
 
   const { activity_id, target_order } = parsed.data;
 
-  const activity = await prisma.activity.findUniqueOrThrow({
+  // Rule: 行程已被其他成員刪除時，調整順序操作失敗
+  const activity = await prisma.activity.findUnique({
     where: { id: activity_id },
     include: { day: true },
   });
+  if (!activity) {
+    return { error: "找不到此行程" };
+  }
 
   const membership = await prisma.tripMember.findUnique({
     where: {
