@@ -27,9 +27,10 @@ Table trips {
 }
 
 Table trip_members {
-  trip_id int    [not null, note: "關聯旅程"]
-  user_id int    [not null, note: "關聯使用者"]
-  role    string [not null, note: "成員角色：owner（建立者）或 member（加入者）"]
+  trip_id   int    [not null, note: "關聯旅程"]
+  user_id   int    [not null, note: "關聯使用者"]
+  role      string [not null, note: "成員角色：owner（建立者）或 member（加入者）"]
+  joined_at string [not null, note: "成員加入旅程的時間戳，用於回溯加入的先後順序（開支均分尾差的分配順序依據）"]
 
   indexes {
     (trip_id, user_id) [pk, note: "同一旅程同一使用者只能有一筆成員記錄"]
@@ -39,6 +40,7 @@ Table trip_members {
   旅程與使用者的多對多關聯。
   owner 可查看、編輯、分享、刪除旅程；member 可查看、編輯、分享，不可刪除。
   使用者以 invite_token 重複加入已是成員的旅程時，不新增記錄，且既有角色不受影響（不會被覆寫）。
+  成員加入旅程的先後順序需可回溯，作為開支均分尾差的分配順序依據。
   '''
 }
 
@@ -94,27 +96,34 @@ Table transports {
 Table expenses {
   id         int    [pk, increment]
   trip_id    int    [not null, note: "關聯旅程"]
-  name       string [not null, note: "品項名稱，必填"]
-  amount     float  [not null, note: "開支金額，必填，> 0"]
-  category   string [not null, note: "類別：住宿 / 吃喝 / 購物 / 其他 / 自定義字串，必填"]
-  payer_id   int    [not null, note: "付款人，為該旅程的團員之一"]
+  name       string [not null, note: "品項名稱，必填，trim 後不可為空字串"]
+  amount     float  [not null, note: "開支金額，必填，> 0，最多至小數第二位，無上限"]
+  category   string [not null, note: "類別名稱，必填，trim 後不可為空字串；前端以選單呈現 住宿 / 吃喝 / 購物 / 其他 四個預設選項，並允許使用者新增自定義名稱選項；欄位本身為自由文字，不因此限制為固定枚舉值"]
+  category_icon string [note: "自定義類別的圖示，選填；若未填寫，前端以類別名稱文字顯示代替。預設四個選項的圖示由前端內建提供，不寫入此欄位。僅適用於自定義類別（category 非預設選項），編輯開支時可與類別名稱一併或單獨修改"]
+  expense_date date [not null, note: "開支日期，必填；未指定時預設為當天（以使用者裝置時區判定，由前端帶入預設值），不限制須落在旅程起迄日範圍內"]
+  payer_id   int    [not null, note: "付款人，為該旅程的團員之一；不要求同時為該筆開支的分攤參與者（可代墊不參與分攤）"]
   split_type string [not null, note: "分攤方式：even（均分）或 custom（自訂金額）"]
 
   Note: '''
   旅程帳本中的一筆開支。
   expenses 1:N expense_splits
+  刪除開支時，關聯的 expense_splits 一併刪除（cascade delete）。
   跨屬性不變條件：所有關聯 expense_splits 的 amount 總和 = expenses.amount
+  跨屬性不變條件：split_type 為 even 時，金額平均分配至小數第二位，尾差以 0.01 依參與者加入旅程的先後順序分配給前幾位參與者。
+  跨屬性不變條件：category 為四個預設選項（住宿 / 吃喝 / 購物 / 其他）之一時，category_icon 必為空；編輯時將 category 由自定義名稱改為預設選項，系統自動清除 category_icon。
   '''
 }
 
 Table expense_splits {
   id         int   [pk, increment]
   expense_id int   [not null, note: "關聯開支"]
-  user_id    int   [not null, note: "參與分攤的團員"]
-  amount     float [not null, note: "此成員的分攤金額，> 0"]
+  trip_id    int   [not null, note: "冗餘欄位，與 expense.trip_id 相同；非業務規則，供 Supabase Realtime 依 trip 過濾訂閱事件用"]
+  user_id    int   [not null, note: "參與分攤的團員，必須為該旅程的團員；任一參與者非團員時整筆開支不建立（操作失敗）"]
+  amount     float [not null, note: "此成員的分攤金額，>= 0，最多至小數第二位；0 為有效分攤明細（該參與者不分擔費用但保留於名單中）"]
 
   indexes {
     (expense_id, user_id) [unique, note: "一筆開支中同一使用者只有一筆分攤明細"]
+    trip_id
   }
 
   Note: "記錄某筆開支中每位參與者的分攤金額。"
@@ -128,4 +137,5 @@ ref: transports.after_activity_id - activities.id
 ref: expenses.trip_id        > trips.id
 ref: expenses.payer_id       > users.id
 ref: expense_splits.expense_id > expenses.id
+ref: expense_splits.trip_id    > trips.id
 ref: expense_splits.user_id    > users.id
