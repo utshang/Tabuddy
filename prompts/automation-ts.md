@@ -393,7 +393,7 @@
 
 - **前置階段**：`discovery.md`、`clarify-and-translation.md`、`formulation.md` 已產出完整規格
 - **本階段角色**：自動化開發階段，將完整規格轉換為結構乾淨、規則正確的可運行應用程式
-- **後續階段**：`deploy.md`——功能開發完成、使用者準備部署時執行，負責部署與自動化驗收；完成後由該 prompt 把 `CLAUDE.md` 進度更新為 phase5
+- **後續階段**：`deploy.md`——功能開發完成、使用者準備部署時執行，負責部署與自動化驗收
 - **與 `prompts/tests/01`→`05`（四段式 TDD + 串接）的關係**：兩者是**同一個實作階段的替代路徑，不是接續關係**。若某個 feature 已經走過 `prompts/tests/` 的流程（有測試保護的業務邏輯模組 + 已串接的頁面），**不要**再對該 feature 跑本 prompt，本 prompt 會從規格重新推導一份自己的實作，可能與已測試的模組重複或衝突。本 prompt 僅適合完全沒走 TDD 流程、想一次做完的 feature。
 
 ---
