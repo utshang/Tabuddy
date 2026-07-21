@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteActivity } from "@/lib/actions/activities";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,9 +15,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import type { CachedDay } from "@/lib/itinerary-cache";
+import { itineraryQueryKey } from "@/lib/queries/itinerary";
 
 type Activity = {
   id: number;
+  day_id: number;
   name: string;
 };
 
@@ -29,27 +33,48 @@ export function DeleteActivityDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string>();
-  const [isPending, startTransition] = useTransition();
+  const queryClient = useQueryClient();
+  const queryKey = itineraryQueryKey(tripId);
 
-  // Rule: 刪除行程需經使用者確認才會執行
-  function handleConfirm() {
-    setServerError(undefined);
-    startTransition(async () => {
+  // Rule: 成員可以刪除行程（樂觀更新，失敗時回滾）
+  const mutation = useMutation({
+    mutationFn: async () => {
       const formData = new FormData();
       formData.set("activity_id", String(activity.id));
       formData.set("trip_id", String(tripId));
       formData.set("confirm_deletion", "true");
 
       const result = await deleteActivity({}, formData);
-
-      if (result.error) {
-        setServerError(result.error);
-        return;
-      }
-
+      if (result.error) throw new Error(result.error);
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<CachedDay[]>(queryKey);
+      queryClient.setQueryData<CachedDay[]>(queryKey, (days) =>
+        days
+          ? days.map((day) =>
+              day.id === activity.day_id
+                ? { ...day, activities: day.activities.filter((a) => a.id !== activity.id) }
+                : day,
+            )
+          : days,
+      );
+      return { previous };
+    },
+    onSuccess: () => {
       toast.success("行程已刪除");
       setOpen(false);
-    });
+    },
+    onError: (error, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      setServerError(error instanceof Error ? error.message : "刪除行程失敗");
+    },
+  });
+
+  // Rule: 刪除行程需經使用者確認才會執行
+  function handleConfirm() {
+    setServerError(undefined);
+    mutation.mutate();
   }
 
   return (
@@ -82,7 +107,7 @@ export function DeleteActivityDialog({
           <Button
             variant="outline"
             onClick={() => setOpen(false)}
-            disabled={isPending}
+            disabled={mutation.isPending}
           >
             取消
           </Button>
@@ -90,9 +115,9 @@ export function DeleteActivityDialog({
           <Button
             variant="destructive"
             onClick={handleConfirm}
-            disabled={isPending}
+            disabled={mutation.isPending}
           >
-            {isPending ? "刪除中…" : "確認刪除"}
+            {mutation.isPending ? "刪除中…" : "確認刪除"}
           </Button>
         </DialogFooter>
       </DialogContent>

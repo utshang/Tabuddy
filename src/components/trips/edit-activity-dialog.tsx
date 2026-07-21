@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { editActivity } from "@/lib/actions/activities";
 import {
   editActivitySchema,
@@ -23,9 +24,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { applyActivityEvent, type CachedDay } from "@/lib/itinerary-cache";
+import { itineraryQueryKey } from "@/lib/queries/itinerary";
 
 type Activity = {
   id: number;
+  day_id: number;
+  trip_id: number;
+  order: number;
   name: string;
   google_map_url: string | null;
   duration_minutes: number;
@@ -35,8 +41,9 @@ type Activity = {
 export function EditActivityDialog({ activity }: { activity: Activity }) {
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string>();
-  const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const queryClient = useQueryClient();
+  const queryKey = itineraryQueryKey(activity.trip_id);
 
   const {
     register,
@@ -53,22 +60,47 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
     },
   });
 
-  const onSubmit = handleSubmit(() => {
-    setServerError(undefined);
-    startTransition(async () => {
-      const formData = new FormData(formRef.current!);
+  // Rule: 編輯行程可同時修改任意欄位組合（樂觀更新，失敗時回滾）
+  const mutation = useMutation({
+    mutationFn: async (formData: FormData) => {
       formData.set("activity_id", String(activity.id));
-
       const result = await editActivity({}, formData);
-
-      if (result.error) {
-        setServerError(result.error);
-        return;
-      }
-
+      if (result.error) throw new Error(result.error);
+    },
+    onMutate: async (formData) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<CachedDay[]>(queryKey);
+      const googleMapUrl = String(formData.get("google_map_url") ?? "");
+      const note = String(formData.get("note") ?? "");
+      queryClient.setQueryData<CachedDay[]>(queryKey, (days) =>
+        days
+          ? applyActivityEvent(days, "UPDATE", {
+              id: activity.id,
+              day_id: activity.day_id,
+              trip_id: activity.trip_id,
+              order: activity.order,
+              name: String(formData.get("name") ?? ""),
+              google_map_url: googleMapUrl || null,
+              duration_minutes: Number(formData.get("duration_minutes")),
+              note: note || null,
+            })
+          : days,
+      );
+      return { previous };
+    },
+    onSuccess: () => {
       toast.success("行程已更新");
       setOpen(false);
-    });
+    },
+    onError: (error, _formData, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      setServerError(error instanceof Error ? error.message : "編輯行程失敗");
+    },
+  });
+
+  const onSubmit = handleSubmit(() => {
+    setServerError(undefined);
+    mutation.mutate(new FormData(formRef.current!));
   });
 
   return (
@@ -162,8 +194,8 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "儲存中…" : "儲存"}
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? "儲存中…" : "儲存"}
             </Button>
           </DialogFooter>
         </form>

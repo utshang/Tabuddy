@@ -61,7 +61,7 @@ export function ItineraryBoard({
                 </h2>
                 <DayStartTimeDialog dayId={day.id} startTime={day.start_time} />
               </div>
-              <AddActivityDialog dayId={day.id} />
+              <AddActivityDialog tripId={tripId} dayId={day.id} />
             </div>
 
             <ActivityList

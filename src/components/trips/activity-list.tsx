@@ -288,7 +288,7 @@ function SortableActivityItem({
               />
             </>
           ) : (
-            <AddTransportDialog activityId={activity.id} />
+            <AddTransportDialog tripId={activity.trip_id} activityId={activity.id} />
           )}
         </div>
       </div>

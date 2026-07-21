@@ -10,9 +10,20 @@ import {
 } from "@/lib/validations/transports";
 import { resolveEditedTransportIcon } from "@/lib/transport-modes";
 
+export type TransportData = {
+  id: number;
+  after_activity_id: number;
+  trip_id: number;
+  hours: number;
+  minutes: number;
+  mode: string;
+  icon: string | null;
+};
+
 export type AddTransportState = {
   error?: string;
   success?: boolean;
+  transport?: TransportData;
 };
 
 export async function addTransport(
@@ -66,7 +77,7 @@ export async function addTransport(
   }
 
   // Rule: 成功新增後交通時間出現在對應行程之後
-  await prisma.transport.create({
+  const created = await prisma.transport.create({
     data: {
       after_activity_id,
       trip_id: activity.day.trip_id,
@@ -78,12 +89,13 @@ export async function addTransport(
   });
 
   revalidatePath(`/trips/${activity.day.trip_id}`);
-  return { success: true };
+  return { success: true, transport: created };
 }
 
 export type EditTransportState = {
   error?: string;
   success?: boolean;
+  transport?: TransportData;
 };
 
 /**
@@ -149,13 +161,13 @@ export async function editTransport(
   // Rule: 成員可以編輯交通時間的分
   // Rule: 成員可以編輯交通時間的交通工具
   // Rule: 編輯交通時間可同時修改任意欄位組合
-  await prisma.transport.update({
+  const updated = await prisma.transport.update({
     where: { id: transport.id },
     data: { hours, minutes, mode, icon: resolvedIcon },
   });
 
   revalidatePath(`/trips/${tripId}`);
-  return { success: true };
+  return { success: true, transport: updated };
 }
 
 export type DeleteTransportState = {

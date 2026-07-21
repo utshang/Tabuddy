@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteTransport } from "@/lib/actions/transports";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,37 +13,63 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { CachedDay, CachedTransport } from "@/lib/itinerary-cache";
+import { itineraryQueryKey } from "@/lib/queries/itinerary";
 
 export function DeleteTransportDialog({
   activityId,
+  transport,
   open,
   onOpenChange,
 }: {
   activityId: number;
+  transport: CachedTransport;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const [serverError, setServerError] = useState<string>();
-  const [isPending, startTransition] = useTransition();
+  const queryClient = useQueryClient();
+  const queryKey = itineraryQueryKey(transport.trip_id);
 
-  // Rule: 刪除交通時間需經使用者確認才會執行
-  function handleConfirm() {
-    setServerError(undefined);
-    startTransition(async () => {
+  // Rule: 成員可以刪除交通時間（樂觀更新，失敗時回滾）
+  const mutation = useMutation({
+    mutationFn: async () => {
       const formData = new FormData();
       formData.set("after_activity_id", String(activityId));
       formData.set("confirm_deletion", "true");
 
       const result = await deleteTransport({}, formData);
-
-      if (result.error) {
-        setServerError(result.error);
-        return;
-      }
-
+      if (result.error) throw new Error(result.error);
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<CachedDay[]>(queryKey);
+      queryClient.setQueryData<CachedDay[]>(queryKey, (days) =>
+        days
+          ? days.map((day) => ({
+              ...day,
+              activities: day.activities.map((a) =>
+                a.transport?.id === transport.id ? { ...a, transport: null } : a,
+              ),
+            }))
+          : days,
+      );
+      return { previous };
+    },
+    onSuccess: () => {
       toast.success("交通時間已刪除");
       onOpenChange(false);
-    });
+    },
+    onError: (error, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      setServerError(error instanceof Error ? error.message : "刪除交通時間失敗");
+    },
+  });
+
+  // Rule: 刪除交通時間需經使用者確認才會執行
+  function handleConfirm() {
+    setServerError(undefined);
+    mutation.mutate();
   }
 
   return (
@@ -69,7 +96,7 @@ export function DeleteTransportDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isPending}
+            disabled={mutation.isPending}
           >
             取消
           </Button>
@@ -77,9 +104,9 @@ export function DeleteTransportDialog({
           <Button
             variant="destructive"
             onClick={handleConfirm}
-            disabled={isPending}
+            disabled={mutation.isPending}
           >
-            {isPending ? "刪除中…" : "確認刪除"}
+            {mutation.isPending ? "刪除中…" : "確認刪除"}
           </Button>
         </DialogFooter>
       </DialogContent>

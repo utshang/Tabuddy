@@ -11,20 +11,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EditTransportDialog } from "@/components/trips/edit-transport-dialog";
 import { DeleteTransportDialog } from "@/components/trips/delete-transport-dialog";
-
-type Transport = {
-  hours: number;
-  minutes: number;
-  mode: string;
-  icon: string | null;
-};
+import type { CachedTransport } from "@/lib/itinerary-cache";
 
 export function TransportActionsMenu({
   activityId,
   transport,
 }: {
   activityId: number;
-  transport: Transport;
+  transport: CachedTransport;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -57,6 +51,7 @@ export function TransportActionsMenu({
       />
       <DeleteTransportDialog
         activityId={activityId}
+        transport={transport}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
       />
