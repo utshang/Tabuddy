@@ -267,9 +267,9 @@ function SortableActivityItem({
                       href={activity.google_map_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                      className="inline-flex  gap-1 font-medium text-primary hover:underline"
                     >
-                      <MapPin className="size-3.5" />
+                      <MapPin className="size-3.5 mt-[2px]" />
                       {activity.name}
                     </a>
                   ) : (
