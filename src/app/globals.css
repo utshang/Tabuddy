@@ -125,7 +125,7 @@
   }
   html,
   body {
-    @apply overflow-x-hidden;
+    @apply overflow-x-hidden touch-pan-x touch-pan-y;
   }
   body {
     @apply bg-background text-foreground;
