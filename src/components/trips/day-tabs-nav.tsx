@@ -82,7 +82,7 @@ export function DayTabsNav({
       className="sticky top-0 z-10 bg-background/95 py-2"
     >
       <Tabs value={active} onValueChange={handleChange}>
-        <TabsList className="h-16 w-full justify-start gap-1 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
+        <TabsList className="h-16 w-full justify-start gap-1 overflow-x-auto overscroll-x-contain scrollbar-none [&::-webkit-scrollbar]:hidden">
           {days.map((day) => (
             <TabsTrigger
               key={day.id}
