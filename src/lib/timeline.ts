@@ -12,6 +12,8 @@ export type TimelineTransportInput = {
 export type TimelineActivityInput = {
   duration_minutes: number;
   transport?: TimelineTransportInput | null;
+  /** 指定時間（HH:MM），選填；設定後時間軸直接採用此值，不受前面行程累加值影響 */
+  fixed_time?: string | null;
 };
 
 export type TimelineSlot = {
@@ -26,6 +28,10 @@ export type ActivityTimeline = {
   activity: TimelineSlot;
   /** 行程之後交通時間的時間軸（= 行程時間軸 + 停留時間）；無交通時間時為 null */
   transport: TimelineSlot | null;
+  /** 前面行程累加時間早於指定時間時的落差（分鐘）；無指定時間或無落差時為 null */
+  idleMinutesBefore: number | null;
+  /** 前面行程累加時間晚於指定時間時為 true（時間衝突），此時時間軸仍採用指定時間 */
+  hasConflict: boolean;
 };
 
 const MINUTES_PER_DAY = 24 * 60;
@@ -69,6 +75,24 @@ export function computeDayTimeline(
   let cursor = parseTimeToMinutes(day.start_time ?? DEFAULT_START_TIME);
 
   return activities.map((activity) => {
+    let idleMinutesBefore: number | null = null;
+    let hasConflict = false;
+
+    // Rule: 設定指定時間的行程，時間軸直接採用指定時間，不受前面行程累加值影響
+    if (activity.fixed_time) {
+      const dayOffset = Math.floor(cursor / MINUTES_PER_DAY);
+      const target = dayOffset * MINUTES_PER_DAY + parseTimeToMinutes(activity.fixed_time);
+
+      // Rule: 前面行程累加時間早於指定時間時，中間顯示空閒時間
+      // Rule: 前面行程累加時間晚於指定時間時（時間衝突），時間軸仍顯示指定時間並標示衝突警告
+      if (target > cursor) {
+        idleMinutesBefore = target - cursor;
+      } else if (target < cursor) {
+        hasConflict = true;
+      }
+      cursor = target;
+    }
+
     const activitySlot = toSlot(day.date, cursor);
 
     // 交通時間的時間軸 = 前一行程時間軸 + 前一行程停留時間（見 spec.md「時間軸計算」範例）
@@ -79,11 +103,12 @@ export function computeDayTimeline(
 
     // Rule: 後續行程的時間軸 = 前一行程時間軸 + 前一行程停留時間 + 兩行程間的交通時間
     // Rule: 兩行程間未設定交通時間時，交通時間以 0 分鐘計算
+    // Rule: 指定時間之後的行程，改以指定時間為基準繼續累加計算
     const transportMinutes = activity.transport
       ? activity.transport.hours * 60 + activity.transport.minutes
       : 0;
     cursor += activity.duration_minutes + transportMinutes;
 
-    return { activity: activitySlot, transport: transportSlot };
+    return { activity: activitySlot, transport: transportSlot, idleMinutesBefore, hasConflict };
   });
 }

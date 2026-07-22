@@ -77,6 +77,7 @@ model Activity {
   duration_minutes Int
   note             String?
   order            Int
+  fixed_time       String? // 指定時間（HH:MM）；設定後時間軸直接採用此值，見 spec/features/行程時間軸.feature
 
   day       Day        @relation(fields: [day_id], references: [id], onDelete: Cascade)
   trip      Trip       @relation(fields: [trip_id], references: [id], onDelete: Cascade)

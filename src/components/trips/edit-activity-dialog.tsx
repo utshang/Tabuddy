@@ -36,6 +36,7 @@ type Activity = {
   google_map_url: string | null;
   duration_minutes: number;
   note: string | null;
+  fixed_time: string | null;
 };
 
 export function EditActivityDialog({ activity }: { activity: Activity }) {
@@ -57,6 +58,7 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
       google_map_url: activity.google_map_url ?? "",
       duration_minutes: activity.duration_minutes,
       note: activity.note ?? "",
+      fixed_time: activity.fixed_time ?? "",
     },
   });
 
@@ -72,6 +74,7 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
       const previous = queryClient.getQueryData<CachedDay[]>(queryKey);
       const googleMapUrl = String(formData.get("google_map_url") ?? "");
       const note = String(formData.get("note") ?? "");
+      const fixedTime = String(formData.get("fixed_time") ?? "");
       queryClient.setQueryData<CachedDay[]>(queryKey, (days) =>
         days
           ? applyActivityEvent(days, "UPDATE", {
@@ -83,6 +86,7 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
               google_map_url: googleMapUrl || null,
               duration_minutes: Number(formData.get("duration_minutes")),
               note: note || null,
+              fixed_time: fixedTime || null,
             })
           : days,
       );
@@ -123,7 +127,7 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
         <DialogHeader>
           <DialogTitle>編輯行程</DialogTitle>
           <DialogDescription>
-            修改行程名稱、GoogleMap 連結、停留時間或備註。
+            修改行程名稱、GoogleMap 連結、停留時間、備註或指定時間。
           </DialogDescription>
         </DialogHeader>
 
@@ -172,7 +176,7 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
             <Input
               id={`edit-activity-duration-${activity.id}`}
               type="number"
-              min={1}
+              min={0}
               {...register("duration_minutes")}
             />
             {errors.duration_minutes && (
@@ -190,6 +194,22 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
             />
             {errors.note && (
               <p className="text-sm text-destructive">{errors.note.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`edit-activity-fixed-time-${activity.id}`}>
+              指定時間
+            </Label>
+            <Input
+              id={`edit-activity-fixed-time-${activity.id}`}
+              type="time"
+              {...register("fixed_time")}
+            />
+            {errors.fixed_time && (
+              <p className="text-sm text-destructive">
+                {errors.fixed_time.message}
+              </p>
             )}
           </div>
 

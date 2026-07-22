@@ -110,4 +110,69 @@ describe("computeDayTimeline", () => {
 
     expect(result[0].activity).toEqual({ time: "08:00", date: "2025-06-02" });
   });
+
+  // Rule: 設定指定時間的行程，時間軸直接採用指定時間，不受前面行程累加值影響
+  it("指定時間的行程忽略前面行程的累加值", () => {
+    const result = computeDayTimeline(
+      { date: "2025-06-01", start_time: "08:00" },
+      [
+        { duration_minutes: 0 },
+        { duration_minutes: 0 },
+        { duration_minutes: 60, fixed_time: "19:00" },
+      ],
+    );
+
+    expect(result[0].activity.time).toBe("08:00");
+    expect(result[1].activity.time).toBe("08:00");
+    expect(result[2].activity.time).toBe("19:00");
+  });
+
+  // Rule: 指定時間之後的行程，改以指定時間為基準繼續累加計算
+  it("指定時間行程之後的行程接續累加", () => {
+    const result = computeDayTimeline(
+      { date: "2025-06-01", start_time: "08:00" },
+      [
+        {
+          duration_minutes: 60,
+          transport: { hours: 0, minutes: 15 },
+          fixed_time: "19:00",
+        },
+        { duration_minutes: 30 },
+      ],
+    );
+
+    expect(result[0].activity.time).toBe("19:00");
+    expect(result[1].activity.time).toBe("20:15");
+  });
+
+  // Rule: 前面行程累加時間早於下一個指定時間時，中間顯示空閒時間
+  it("累加值與指定時間之間的落差顯示為空閒時間", () => {
+    const result = computeDayTimeline(
+      { date: "2025-06-01", start_time: "17:00" },
+      [
+        { duration_minutes: 30 },
+        { duration_minutes: 60, fixed_time: "19:00" },
+      ],
+    );
+
+    expect(result[0].idleMinutesBefore).toBeNull();
+    expect(result[1].activity.time).toBe("19:00");
+    expect(result[1].idleMinutesBefore).toBe(90);
+    expect(result[1].hasConflict).toBe(false);
+  });
+
+  // Rule: 前面行程累加時間晚於下一個指定時間時（時間衝突），時間軸仍顯示指定時間並標示衝突警告
+  it("累加值超過指定時間時顯示時間衝突警告", () => {
+    const result = computeDayTimeline(
+      { date: "2025-06-01", start_time: "08:00" },
+      [
+        { duration_minutes: 700 },
+        { duration_minutes: 60, fixed_time: "19:00" },
+      ],
+    );
+
+    expect(result[1].activity.time).toBe("19:00");
+    expect(result[1].hasConflict).toBe(true);
+    expect(result[1].idleMinutesBefore).toBeNull();
+  });
 });

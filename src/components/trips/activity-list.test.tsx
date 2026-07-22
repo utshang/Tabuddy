@@ -35,6 +35,7 @@ function makeActivity(
     trip_id: 1,
     google_map_url: null,
     note: null,
+    fixed_time: null,
     transport: null,
     ...overrides,
   };
@@ -150,5 +151,49 @@ describe("ActivityList 時間軸呈現", () => {
 
     expect(screen.getByText("08:30")).toBeInTheDocument();
     expect(screen.getByText(/0 時 15 分/)).toBeInTheDocument();
+  });
+
+  // Rule: 前面行程累加時間早於下一個指定時間時，中間顯示空閒時間
+  it("累加值與指定時間之間的落差顯示為空閒時間", () => {
+    renderActivityList({
+      dayId: 5,
+      dayDate: "2025-06-01",
+      startTime: "17:00",
+      activities: [
+        makeActivity({ id: 7, name: "道頓堀", order: 1, duration_minutes: 30 }),
+        makeActivity({
+          id: 8,
+          name: "晚餐：牛たんの檸檬",
+          order: 2,
+          duration_minutes: 60,
+          fixed_time: "19:00",
+        }),
+      ],
+    });
+
+    expect(screen.getByText("19:00")).toBeInTheDocument();
+    expect(screen.getByText("空閒 1 小時 30 分鐘")).toBeInTheDocument();
+  });
+
+  // Rule: 前面行程累加時間晚於下一個指定時間時（時間衝突），時間軸仍顯示指定時間並標示衝突警告
+  it("累加值超過指定時間時顯示時間衝突警告", () => {
+    renderActivityList({
+      dayId: 6,
+      dayDate: "2025-06-01",
+      startTime: "08:00",
+      activities: [
+        makeActivity({ id: 9, name: "道頓堀", order: 1, duration_minutes: 700 }),
+        makeActivity({
+          id: 10,
+          name: "晚餐：牛たんの檸檬",
+          order: 2,
+          duration_minutes: 60,
+          fixed_time: "19:00",
+        }),
+      ],
+    });
+
+    expect(screen.getByText("19:00")).toBeInTheDocument();
+    expect(screen.getByLabelText("時間衝突")).toBeInTheDocument();
   });
 });

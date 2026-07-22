@@ -44,6 +44,7 @@ describe("applyDayEvent", () => {
       google_map_url: null,
       duration_minutes: 30,
       note: null,
+      fixed_time: null,
       order: 1,
       transport: null,
     };
@@ -88,6 +89,7 @@ describe("applyActivityEvent", () => {
       google_map_url: null,
       duration_minutes: 30,
       note: null,
+      fixed_time: null,
       order: 1,
     });
 
@@ -100,6 +102,7 @@ describe("applyActivityEvent", () => {
         google_map_url: null,
         duration_minutes: 30,
         note: null,
+        fixed_time: null,
         order: 1,
         transport: null,
       },
@@ -128,6 +131,7 @@ describe("applyActivityEvent", () => {
             google_map_url: null,
             duration_minutes: 30,
             note: null,
+            fixed_time: null,
             order: 1,
             transport,
           },
@@ -143,6 +147,7 @@ describe("applyActivityEvent", () => {
       google_map_url: null,
       duration_minutes: 45,
       note: null,
+      fixed_time: null,
       order: 1,
     });
 
@@ -164,6 +169,7 @@ describe("applyActivityEvent", () => {
             google_map_url: null,
             duration_minutes: 30,
             note: null,
+            fixed_time: null,
             order: 1,
             transport: null,
           },
@@ -179,6 +185,7 @@ describe("applyActivityEvent", () => {
       google_map_url: null,
       duration_minutes: 30,
       note: null,
+      fixed_time: null,
       order: 1,
     });
 
@@ -200,6 +207,7 @@ describe("applyTransportEvent", () => {
             google_map_url: null,
             duration_minutes: 30,
             note: null,
+            fixed_time: null,
             order: 1,
             transport: null,
           },
@@ -211,6 +219,7 @@ describe("applyTransportEvent", () => {
             google_map_url: null,
             duration_minutes: 30,
             note: null,
+            fixed_time: null,
             order: 2,
             transport: null,
           },
@@ -309,6 +318,7 @@ describe("applyReorder", () => {
             google_map_url: null,
             duration_minutes: 30,
             note: null,
+            fixed_time: null,
             order: 1,
             transport,
           },
@@ -320,6 +330,7 @@ describe("applyReorder", () => {
             google_map_url: null,
             duration_minutes: 30,
             note: null,
+            fixed_time: null,
             order: 2,
             transport: null,
           },
@@ -351,6 +362,7 @@ describe("applyReorder", () => {
             google_map_url: null,
             duration_minutes: 30,
             note: null,
+            fixed_time: null,
             order: 1,
             transport: null,
           },
