@@ -9,9 +9,12 @@ import { useItineraryRealtime } from "@/hooks/use-itinerary-realtime";
 import { fetchItinerary, itineraryQueryKey } from "@/lib/queries/itinerary";
 import type { CachedDay } from "@/lib/itinerary-cache";
 
+const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
+
 function formatDate(date: string) {
-  const [, month, day] = date.split("-");
-  return `${Number(month)}/${Number(day)}`;
+  const [year, month, day] = date.split("-").map(Number);
+  const weekday = WEEKDAY_LABELS[new Date(year, month - 1, day).getDay()];
+  return `${month}/${day}(${weekday})`;
 }
 
 /**
