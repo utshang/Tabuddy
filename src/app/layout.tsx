@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist, Bevan } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers"
@@ -17,6 +17,13 @@ const bevan = Bevan({
 export const metadata: Metadata = {
   title: "Tabuddy — Plan the trip, split the tab.",
   description: "Collaborative trip planning with built-in expense splitting.",
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({
