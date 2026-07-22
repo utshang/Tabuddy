@@ -5,10 +5,6 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 const MESSAGES: Record<string, { title: string; description: string }> = {
-  check_email: {
-    title: "註冊成功！",
-    description: "請至 Email 收取驗證信，點擊連結後即可登入。",
-  },
   login_success: {
     title: "登入成功",
     description: "歡迎回來！",
