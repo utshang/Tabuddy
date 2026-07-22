@@ -251,7 +251,7 @@ function SortableActivityItem({
         <div className="min-w-0 flex-1 pb-2">
           <Card size="sm">
             <CardContent className="flex items-start justify-between gap-2">
-              <div className="flex items-start gap-2">
+              <div className="flex min-w-0 items-start gap-2">
                 <button
                   type="button"
                   aria-label="拖曳以調整順序"
@@ -261,25 +261,25 @@ function SortableActivityItem({
                 >
                   <GripVertical className="size-4" />
                 </button>
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1">
                   {activity.google_map_url ? (
                     <a
                       href={activity.google_map_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex  gap-1 font-medium text-primary hover:underline"
+                      className="inline-flex wrap-break-word gap-1 font-medium text-primary hover:underline"
                     >
                       <MapPin className="size-3.5 mt-[2px]" />
                       {activity.name}
                     </a>
                   ) : (
-                    <p className="font-medium">{activity.name}</p>
+                    <p className="wrap-break-word font-medium">{activity.name}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
                     停留 {activity.duration_minutes} 分鐘
                   </p>
                   {activity.note && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="wrap-break-word text-xs text-muted-foreground">
                       {activity.note}
                     </p>
                   )}
