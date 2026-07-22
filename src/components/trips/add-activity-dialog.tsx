@@ -98,7 +98,7 @@ export function AddActivityDialog({
         <DialogHeader>
           <DialogTitle>新增行程</DialogTitle>
           <DialogDescription>
-            輸入行程名稱與停留時間，選填 GoogleMap 連結與備註。
+            輸入行程名稱與停留時間，選填 GoogleMap 連結、備註與指定時間。
           </DialogDescription>
         </DialogHeader>
 
@@ -164,6 +164,16 @@ export function AddActivityDialog({
             />
             {errors.note && (
               <p className="text-sm text-destructive">{errors.note.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="fixed_time">指定時間</Label>
+            <Input id="fixed_time" type="time" {...register("fixed_time")} />
+            {errors.fixed_time && (
+              <p className="text-sm text-destructive">
+                {errors.fixed_time.message}
+              </p>
             )}
           </div>
 

@@ -6,6 +6,8 @@ function emptyToUndefined(value: unknown) {
   return trimmed === "" ? undefined : trimmed;
 }
 
+const TIME_FORMAT = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 // Feature: 新增行程
 export const addActivitySchema = z.object({
   day_id: z.coerce.number().int(),
@@ -23,6 +25,12 @@ export const addActivitySchema = z.object({
     .min(0, "停留時間為必填，且不得為負數"),
   // Rule: 新增行程時可一併填寫選填資訊（備註）
   note: z.preprocess(emptyToUndefined, z.string().optional()),
+  // Rule: 新增行程時可一併填寫指定時間
+  // Rule: 指定時間若填寫，必須為合法時間格式（HH:MM）
+  fixed_time: z.preprocess(
+    emptyToUndefined,
+    z.string().regex(TIME_FORMAT, "指定時間格式錯誤").optional(),
+  ),
 });
 
 export type AddActivityFormValues = z.input<typeof addActivitySchema>;
@@ -45,6 +53,13 @@ export const editActivitySchema = z.object({
     .min(0, "停留時間為必填，且不得為負數"),
   // Rule: 成員可以編輯行程的備註
   note: z.preprocess(emptyToUndefined, z.string().optional()),
+  // Rule: 成員可以編輯行程的指定時間
+  // Rule: 指定時間可以被清除，清除後恢復以累加方式計算時間軸
+  // Rule: 編輯後的指定時間必須為合法時間格式（HH:MM）
+  fixed_time: z.preprocess(
+    emptyToUndefined,
+    z.string().regex(TIME_FORMAT, "指定時間格式錯誤").optional(),
+  ),
 });
 
 export type EditActivityFormValues = z.input<typeof editActivitySchema>;

@@ -23,6 +23,7 @@ export type AddActivityState = {
     duration_minutes: number;
     note: string | null;
     order: number;
+    fixed_time: string | null;
   };
 };
 
@@ -43,13 +44,15 @@ export async function addActivity(
     google_map_url: formData.get("google_map_url"),
     duration_minutes: formData.get("duration_minutes"),
     note: formData.get("note"),
+    fixed_time: formData.get("fixed_time"),
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "新增行程失敗" };
   }
 
-  const { day_id, name, google_map_url, duration_minutes, note } = parsed.data;
+  const { day_id, name, google_map_url, duration_minutes, note, fixed_time } =
+    parsed.data;
 
   const day = await prisma.day.findUniqueOrThrow({ where: { id: day_id } });
 
@@ -68,6 +71,7 @@ export async function addActivity(
 
     // Rule: 成功新增後行程出現在對應旅程日期中
     // Rule: 新增行程時可一併填寫選填資訊
+    // Rule: 新增行程時可一併填寫指定時間
     return await tx.activity.create({
       data: {
         day_id,
@@ -76,6 +80,7 @@ export async function addActivity(
         google_map_url,
         duration_minutes,
         note,
+        fixed_time,
         order: activityCount + 1,
       },
     });
@@ -108,13 +113,14 @@ export async function editActivity(
     google_map_url: formData.get("google_map_url"),
     duration_minutes: formData.get("duration_minutes"),
     note: formData.get("note"),
+    fixed_time: formData.get("fixed_time"),
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "編輯行程失敗" };
   }
 
-  const { name, google_map_url, duration_minutes, note } = parsed.data;
+  const { name, google_map_url, duration_minutes, note, fixed_time } = parsed.data;
 
   // Rule: 行程已被其他成員刪除時，編輯操作失敗
   const activity = await prisma.activity.findUnique({
@@ -140,6 +146,8 @@ export async function editActivity(
   // Rule: 成員可以編輯行程的 GoogleMap 連結
   // Rule: 成員可以編輯行程的停留時間
   // Rule: 成員可以編輯行程的備註
+  // Rule: 成員可以編輯行程的指定時間
+  // Rule: 指定時間可以被清除，清除後恢復以累加方式計算時間軸
   // Rule: 編輯行程可同時修改任意欄位組合
   await prisma.activity.update({
     where: { id: activityId },
@@ -148,6 +156,7 @@ export async function editActivity(
       google_map_url: google_map_url ?? null,
       duration_minutes,
       note: note ?? null,
+      fixed_time: fixed_time ?? null,
     },
   });
 

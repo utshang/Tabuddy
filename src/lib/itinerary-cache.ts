@@ -28,6 +28,7 @@ export type CachedActivity = {
   duration_minutes: number;
   note: string | null;
   order: number;
+  fixed_time: string | null;
   transport: CachedTransport | null;
 };
 

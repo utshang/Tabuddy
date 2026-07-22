@@ -68,6 +68,7 @@ Table activities {
   duration_minutes int    [not null, note: "停留時間（分鐘），必填，必須 > 0"]
   note             string [note: "行程備註，選填，無長度限制"]
   order            int    [not null, note: "在當日行程中的排序，用於時間軸計算；新增行程時固定加入當天行程順序的最後（order = 該日既有行程數量 + 1）"]
+  fixed_time       string [note: "指定時間（HH:MM），選填；設定後時間軸直接採用此值，不受前面行程累加值影響，其後行程改以此時間為基準繼續累加；累加值超過指定時間時（時間衝突）仍採用指定時間，僅於時間軸顯示衝突警告，不阻擋新增／編輯"]
 
   Note: '''
   某一天的一個行程，依 order 排列。activities 1:1 transports（每個行程後可選擇性接一段交通時間）。day_id 於建立後固定，編輯行程不支援變更所屬旅程日期（跨日期搬移為 MVP 範圍外）。

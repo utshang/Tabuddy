@@ -31,6 +31,7 @@ type RawActivity = {
   duration_minutes: number;
   note: string | null;
   order: number;
+  fixed_time: string | null;
   transport: RawTransport;
 };
 
@@ -48,7 +49,7 @@ export async function fetchItinerary(tripId: number): Promise<CachedDay[]> {
   const { data, error } = await supabase
     .from("days")
     .select(
-      "id, trip_id, date, start_time, order, activities(id, day_id, trip_id, name, google_map_url, duration_minutes, note, order, transport:transports(id, after_activity_id, trip_id, hours, minutes, mode, icon))",
+      "id, trip_id, date, start_time, order, activities(id, day_id, trip_id, name, google_map_url, duration_minutes, note, order, fixed_time, transport:transports(id, after_activity_id, trip_id, hours, minutes, mode, icon))",
     )
     .eq("trip_id", tripId)
     .order("order", { ascending: true });

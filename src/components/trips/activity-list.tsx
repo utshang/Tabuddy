@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, MapPin } from "lucide-react"
+import { GripVertical, MapPin, TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { reorderActivity } from "@/lib/actions/activities"
@@ -148,19 +148,29 @@ export function ActivityList({
   )
 }
 
-// 時間軸左側的時間標籤；跨過午夜時於時間下方標示隔天日期
+// 時間軸左側的時間標籤；跨過午夜時於時間下方標示隔天日期；時間衝突時標示警告圖示
 function TimelineLabel({
   slot,
   dayDate,
+  hasConflict,
 }: {
   slot: TimelineSlot | null
   dayDate: string
+  hasConflict?: boolean
 }) {
   return (
     <div className="flex w-11 shrink-0 flex-col items-end text-right">
       {slot && (
         <>
-          <span className="text-xs font-medium tabular-nums">{slot.time}</span>
+          <span className="flex items-center gap-1 text-xs font-medium tabular-nums">
+            {hasConflict && (
+              <TriangleAlert
+                className="size-3 text-destructive"
+                aria-label="時間衝突"
+              />
+            )}
+            {slot.time}
+          </span>
           {slot.date !== dayDate && (
             <span className="text-[10px] text-muted-foreground tabular-nums">
               {formatShortDate(slot.date)}
@@ -175,6 +185,13 @@ function TimelineLabel({
 function formatShortDate(date: string) {
   const [, month, day] = date.split("-")
   return `${Number(month)}/${Number(day)}`
+}
+
+// Rule: 前面行程累加時間早於指定時間時，中間顯示空閒時間
+function formatIdleDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  return `${hours} 小時 ${mins} 分鐘`
 }
 
 function SortableActivityItem({
@@ -207,8 +224,24 @@ function SortableActivityItem({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={isDragging ? "opacity-50" : undefined}
     >
+      {timeline.idleMinutesBefore !== null && (
+        <div className="flex gap-3">
+          <div className="w-11 shrink-0" />
+          <div className="flex w-5 shrink-0 flex-col items-center self-stretch">
+            <span className="w-px flex-1 bg-[repeating-linear-gradient(to_bottom,currentColor_0,currentColor_4px,transparent_4px,transparent_8px)] text-border" />
+          </div>
+          <p className="flex-1 pb-2 text-xs text-muted-foreground">
+            空閒 {formatIdleDuration(timeline.idleMinutesBefore)}
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-3">
-        <TimelineLabel slot={timeline.activity} dayDate={dayDate} />
+        <TimelineLabel
+          slot={timeline.activity}
+          dayDate={dayDate}
+          hasConflict={timeline.hasConflict}
+        />
         <div className="flex w-5 shrink-0 flex-col items-center self-stretch">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
             {index + 1}
