@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { createTrip } from '@/lib/actions/trips'
@@ -9,6 +9,7 @@ import { createTripSchema, type CreateTripFormValues } from '@/lib/validations/t
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { InputDate } from '@/components/ui/input-date'
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { formatDateValue, parseDateValue } from '@/lib/date'
 
 export function CreateTripDialog() {
   const [open, setOpen] = useState(false)
@@ -29,10 +31,15 @@ export function CreateTripDialog() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<CreateTripFormValues>({
     resolver: zodResolver(createTripSchema),
   })
+
+  const startDate = useWatch({ control, name: 'start_date' })
+  const endDate = useWatch({ control, name: 'end_date' })
 
   const onSubmit = handleSubmit(() => {
     setServerError(undefined)
@@ -84,14 +91,32 @@ export function CreateTripDialog() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="start_date">起日</Label>
-              <Input id="start_date" type="date" {...register('start_date')} />
+              <input type="hidden" {...register('start_date')} />
+              <InputDate
+                id="start_date"
+                date={startDate ? parseDateValue(startDate) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    setValue('start_date', formatDateValue(date), { shouldValidate: true })
+                  }
+                }}
+              />
               {errors.start_date && (
                 <p className="text-sm text-destructive">{errors.start_date.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="end_date">迄日</Label>
-              <Input id="end_date" type="date" {...register('end_date')} />
+              <input type="hidden" {...register('end_date')} />
+              <InputDate
+                id="end_date"
+                date={endDate ? parseDateValue(endDate) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    setValue('end_date', formatDateValue(date), { shouldValidate: true })
+                  }
+                }}
+              />
               {errors.end_date && (
                 <p className="text-sm text-destructive">{errors.end_date.message}</p>
               )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { editTrip } from '@/lib/actions/trips'
@@ -9,6 +9,7 @@ import { editTripSchema, type EditTripFormValues } from '@/lib/validations/trips
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { InputDate } from '@/components/ui/input-date'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { formatDateValue, parseDateValue } from '@/lib/date'
 
 type Trip = {
   id: number
@@ -43,6 +45,8 @@ export function EditTripDialog({
     register,
     handleSubmit,
     reset,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<EditTripFormValues>({
     resolver: zodResolver(editTripSchema),
@@ -52,6 +56,9 @@ export function EditTripDialog({
       end_date: trip.end_date,
     },
   })
+
+  const startDate = useWatch({ control, name: 'start_date' })
+  const endDate = useWatch({ control, name: 'end_date' })
 
   function submitEdit(values: EditTripFormValues, confirmDeletion: boolean) {
     setServerError(undefined)
@@ -155,14 +162,30 @@ export function EditTripDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor={`edit-start-${trip.id}`}>起日</Label>
-                  <Input id={`edit-start-${trip.id}`} type="date" {...register('start_date')} />
+                  <InputDate
+                    id={`edit-start-${trip.id}`}
+                    date={startDate ? parseDateValue(startDate) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        setValue('start_date', formatDateValue(date), { shouldValidate: true })
+                      }
+                    }}
+                  />
                   {errors.start_date && (
                     <p className="text-sm text-destructive">{errors.start_date.message}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor={`edit-end-${trip.id}`}>迄日</Label>
-                  <Input id={`edit-end-${trip.id}`} type="date" {...register('end_date')} />
+                  <InputDate
+                    id={`edit-end-${trip.id}`}
+                    date={endDate ? parseDateValue(endDate) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        setValue('end_date', formatDateValue(date), { shouldValidate: true })
+                      }
+                    }}
+                  />
                   {errors.end_date && (
                     <p className="text-sm text-destructive">{errors.end_date.message}</p>
                   )}

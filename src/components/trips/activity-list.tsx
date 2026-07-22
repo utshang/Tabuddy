@@ -245,11 +245,6 @@ function SortableActivityItem({
                   <p className="text-xs text-muted-foreground">
                     停留 {activity.duration_minutes} 分鐘
                   </p>
-                  {activity.note && (
-                    <p className="text-xs text-muted-foreground">
-                      {activity.note}
-                    </p>
-                  )}
                 </div>
               </div>
               <div className="flex items-center gap-1">

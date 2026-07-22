@@ -78,8 +78,8 @@ export async function signup(formData: FormData) {
     redirect(`/signup?error=${encodeURIComponent(mapSignupError(error.message))}`)
   }
 
-  // Rule: 三項皆填後系統建立使用者帳號並寄出 Email 驗證信
-  redirect('/login?message=check_email')
+  // Rule: 三項皆填後系統建立使用者帳號
+  redirect('/login')
 }
 
 export async function logout() {
