@@ -79,7 +79,7 @@ export function DayTabsNav({
   return (
     <div
       ref={headerRef}
-      className="sticky top-0 z-10 -mx-4 bg-background/95 px-4 py-2 sm:mx-0 sm:px-0"
+      className="sticky top-0 z-10 bg-background/95 py-2"
     >
       <Tabs value={active} onValueChange={handleChange}>
         <TabsList className="h-16 w-full justify-start gap-1 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
