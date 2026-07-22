@@ -41,13 +41,13 @@ Feature: 編輯行程
       When 使用者對行程 "道頓堀" 執行編輯，將停留時間改為 45
       Then 該行程的 duration_minutes 為 45
 
-  Rule: 編輯後的停留時間必須大於 0
-    Example: 編輯停留時間為 0 時操作失敗
+  Rule: 編輯後的停留時間不得為負數
+    Example: 編輯停留時間為 0 時可成功更新
       Given 使用者 "Alice" 已登入
       And 使用者 "Alice" 是旅程 "大阪旅遊" 的成員
       And 旅程 "大阪旅遊" 日期 "2025-06-01" 有行程 "道頓堀"
       When 使用者對行程 "道頓堀" 執行編輯，將停留時間改為 0
-      Then 操作失敗
+      Then 該行程的 duration_minutes 為 0
 
   Rule: 成員可以編輯行程的備註
     Example: 成員成功編輯行程的備註

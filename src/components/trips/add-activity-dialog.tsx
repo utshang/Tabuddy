@@ -144,7 +144,7 @@ export function AddActivityDialog({
             <Input
               id="duration_minutes"
               type="number"
-              min={1}
+              min={0}
               placeholder="30"
               {...register("duration_minutes")}
             />

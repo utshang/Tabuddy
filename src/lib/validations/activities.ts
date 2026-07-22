@@ -16,11 +16,11 @@ export const addActivitySchema = z.object({
     emptyToUndefined,
     z.url("GoogleMap 連結格式錯誤").optional(),
   ),
-  // Rule: 停留時間為必填，且必須大於 0
+  // Rule: 停留時間為必填，且不得為負數
   duration_minutes: z.coerce
     .number()
     .int()
-    .min(1, "停留時間為必填，且必須大於 0"),
+    .min(0, "停留時間為必填，且不得為負數"),
   // Rule: 新增行程時可一併填寫選填資訊（備註）
   note: z.preprocess(emptyToUndefined, z.string().optional()),
 });
@@ -38,11 +38,11 @@ export const editActivitySchema = z.object({
     z.url("GoogleMap 連結格式錯誤").optional(),
   ),
   // Rule: 成員可以編輯行程的停留時間
-  // Rule: 編輯後的停留時間必須大於 0
+  // Rule: 編輯後的停留時間不得為負數
   duration_minutes: z.coerce
     .number()
     .int()
-    .min(1, "停留時間為必填，且必須大於 0"),
+    .min(0, "停留時間為必填，且不得為負數"),
   // Rule: 成員可以編輯行程的備註
   note: z.preprocess(emptyToUndefined, z.string().optional()),
 });

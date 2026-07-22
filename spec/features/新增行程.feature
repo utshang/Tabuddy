@@ -60,18 +60,18 @@ Feature: 新增行程
         | name   | google_map_url                     | duration_minutes | note         |
         | 道頓堀 | https://maps.google.com/dotonbori  | 30                | 推薦晚上去   |
 
-  Rule: 停留時間為必填，且必須大於 0
+  Rule: 停留時間為必填，且不得為負數
     Example: 未輸入停留時間時操作失敗
       Given 使用者 "Alice" 已登入
       And 使用者 "Alice" 是旅程 "大阪旅遊" 的成員
       When 使用者在旅程 "大阪旅遊" 日期 "2025-06-01" 以 名稱 "道頓堀" 新增行程
       Then 操作失敗
 
-    Example: 停留時間為 0 時操作失敗
+    Example: 停留時間為 0 時可成功新增
       Given 使用者 "Alice" 已登入
       And 使用者 "Alice" 是旅程 "大阪旅遊" 的成員
       When 使用者在旅程 "大阪旅遊" 日期 "2025-06-01" 以 名稱 "道頓堀" 停留時間 0 新增行程
-      Then 操作失敗
+      Then 旅程 "大阪旅遊" 日期 "2025-06-01" 包含名稱為 "道頓堀" 的行程
 
   Rule: GoogleMap 連結若填寫則必須為合法網址格式
     Example: GoogleMap連結為不合法格式時操作失敗

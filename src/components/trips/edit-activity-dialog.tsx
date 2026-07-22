@@ -172,7 +172,7 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
             <Input
               id={`edit-activity-duration-${activity.id}`}
               type="number"
-              min={1}
+              min={0}
               {...register("duration_minutes")}
             />
             {errors.duration_minutes && (
