@@ -18,6 +18,7 @@ import { formatYen } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InputDate } from "@/components/ui/input-date";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { ExpenseMember } from "@/components/trips/add-expense-dialog";
+import { formatDateValue, parseDateValue } from "@/lib/date";
 
 const CUSTOM_OPTION = "__custom__";
 
@@ -107,6 +109,7 @@ export function EditExpenseDialog({
 
   const splitType = useWatch({ control, name: "split_type" });
   const watchedAmount = Number(useWatch({ control, name: "amount" }));
+  const expenseDate = useWatch({ control, name: "expense_date" });
 
   const checkedMembers = members.filter((m) => checked[m.id]);
 
@@ -344,10 +347,17 @@ export function EditExpenseDialog({
 
             <div className="space-y-2">
               <Label htmlFor={`edit-expense-date-${expense.id}`}>何時</Label>
-              <Input
+              <input type="hidden" {...register("expense_date")} />
+              <InputDate
                 id={`edit-expense-date-${expense.id}`}
-                type="date"
-                {...register("expense_date")}
+                date={expenseDate ? parseDateValue(expenseDate) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    setValue("expense_date", formatDateValue(date), {
+                      shouldValidate: true,
+                    });
+                  }
+                }}
               />
               {errors.expense_date && (
                 <p className="text-sm text-destructive">

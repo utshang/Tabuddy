@@ -1,21 +1,22 @@
-"use client";
+"use client"
 
-import { useMemo, useRef, useState, useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus } from "lucide-react";
-import { toast } from "sonner";
-import { addExpense } from "@/lib/actions/expenses";
+import { useMemo, useRef, useState, useTransition } from "react"
+import { useForm, useWatch } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Plus } from "lucide-react"
+import { toast } from "sonner"
+import { addExpense } from "@/lib/actions/expenses"
 import {
   addExpenseFormSchema,
   type AddExpenseFormValues,
-} from "@/lib/validations/expenses";
-import { EXPENSE_CATEGORY_PRESETS } from "@/lib/expense-categories";
-import { splitEvenly } from "@/lib/expense-split";
-import { formatYen } from "@/lib/currency";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@/lib/validations/expenses"
+import { EXPENSE_CATEGORY_PRESETS } from "@/lib/expense-categories"
+import { splitEvenly } from "@/lib/expense-split"
+import { formatYen } from "@/lib/currency"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { InputDate } from "@/components/ui/input-date"
 import {
   Dialog,
   DialogContent,
@@ -24,50 +25,43 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"
+import { formatDateValue, localToday, parseDateValue } from "@/lib/date"
 
-const CUSTOM_OPTION = "__custom__";
+const CUSTOM_OPTION = "__custom__"
 
 export type ExpenseMember = {
   /** 依加入旅程的先後順序排列 */
-  id: string;
-  name: string;
-  isMe: boolean;
-};
-
-// 以使用者裝置時區為準的當天日期（開支日期未指定時的預設值）
-function localToday() {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${month}-${day}`;
+  id: string
+  name: string
+  isMe: boolean
 }
 
 const selectClassName =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50";
+  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
 
 export function AddExpenseDialog({
   tripId,
   members,
 }: {
-  tripId: number;
-  members: ExpenseMember[];
+  tripId: number
+  members: ExpenseMember[]
 }) {
-  const [open, setOpen] = useState(false);
-  const [serverError, setServerError] = useState<string>();
-  const [isPending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false)
+  const [serverError, setServerError] = useState<string>()
+  const [isPending, startTransition] = useTransition()
   const [categoryOption, setCategoryOption] = useState<string>(
     EXPENSE_CATEGORY_PRESETS[0].value,
-  );
+  )
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(members.map((m) => [m.id, true])),
-  );
+  )
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>(
     {},
-  );
-  const formRef = useRef<HTMLFormElement>(null);
-  const isCustomCategory = categoryOption === CUSTOM_OPTION;
-  const me = members.find((m) => m.isMe);
+  )
+  const formRef = useRef<HTMLFormElement>(null)
+  const isCustomCategory = categoryOption === CUSTOM_OPTION
+  const me = members.find((m) => m.isMe)
 
   const defaultValues: AddExpenseFormValues = useMemo(
     () => ({
@@ -81,7 +75,7 @@ export function AddExpenseDialog({
       split_type: "even",
     }),
     [tripId, me?.id],
-  );
+  )
 
   const {
     register,
@@ -93,98 +87,101 @@ export function AddExpenseDialog({
   } = useForm<AddExpenseFormValues>({
     resolver: zodResolver(addExpenseFormSchema),
     defaultValues,
-  });
+  })
 
-  const splitType = useWatch({ control, name: "split_type" });
-  const watchedAmount = Number(useWatch({ control, name: "amount" }));
+  const splitType = useWatch({ control, name: "split_type" })
+  const watchedAmount = Number(useWatch({ control, name: "amount" }))
+  const expenseDate = useWatch({ control, name: "expense_date" }) as
+    | string
+    | undefined
 
-  const checkedMembers = members.filter((m) => checked[m.id]);
+  const checkedMembers = members.filter((m) => checked[m.id])
 
   // Rule: 均分時金額平均分配至小數第二位，尾差以 0.01 依參與者加入旅程的先後順序分配給前幾位參與者
   // members 已依加入順序排列，此處即時預覽每位參與者的分攤金額（與 server 端計算共用同一純函式）
   const evenShares = (() => {
-    if (splitType !== "even" || checkedMembers.length === 0) return null;
+    if (splitType !== "even" || checkedMembers.length === 0) return null
     try {
-      const shares = splitEvenly(watchedAmount, checkedMembers.length);
+      const shares = splitEvenly(watchedAmount, checkedMembers.length)
       return Object.fromEntries(
         checkedMembers.map((m, i) => [m.id, shares[i]]),
-      ) as Record<string, number>;
+      ) as Record<string, number>
     } catch {
-      return null;
+      return null
     }
-  })();
+  })()
 
   // Rule: 自訂金額時各參與者分攤金額之和必須等於開支金額（即時顯示差額）
   const customSummary = (() => {
-    if (splitType !== "custom") return null;
+    if (splitType !== "custom") return null
     // 把所有勾選的參與者各自填的自訂分攤金額逐一 × 100 加總起來，同樣以分為單位
     const sumCents = checkedMembers.reduce((sum, m) => {
-      const value = Number(customAmounts[m.id] ?? "");
-      if (!Number.isFinite(value)) return sum;
-      return sum + Math.round(value * 100);
-    }, 0);
+      const value = Number(customAmounts[m.id] ?? "")
+      if (!Number.isFinite(value)) return sum
+      return sum + Math.round(value * 100)
+    }, 0)
     // 使用者在「金額」欄位輸入的開支總額，換算成分。例如輸入 350.5 元 → 35050
     const amountCents = Number.isFinite(watchedAmount)
       ? Math.round(watchedAmount * 100)
-      : 0;
+      : 0
     // 自訂金額時各參與者分攤金額之和必須等於開支金額
-    return { sum: sumCents / 100, diff: (amountCents - sumCents) / 100 };
-  })();
+    return { sum: sumCents / 100, diff: (amountCents - sumCents) / 100 }
+  })()
 
   function resetForm() {
-    setCategoryOption(EXPENSE_CATEGORY_PRESETS[0].value);
-    setChecked(Object.fromEntries(members.map((m) => [m.id, true])));
-    setCustomAmounts({});
-    formRef.current?.reset();
-    reset(defaultValues);
+    setCategoryOption(EXPENSE_CATEGORY_PRESETS[0].value)
+    setChecked(Object.fromEntries(members.map((m) => [m.id, true])))
+    setCustomAmounts({})
+    formRef.current?.reset()
+    reset(defaultValues)
   }
 
   function handleCategoryOptionChange(next: string) {
-    setCategoryOption(next);
+    setCategoryOption(next)
     if (next === CUSTOM_OPTION) {
       // 類別為必填：切換為自定義時清空，待使用者輸入類別名稱
-      setValue("category", "", { shouldValidate: true });
-      setValue("category_icon", undefined);
+      setValue("category", "", { shouldValidate: true })
+      setValue("category_icon", undefined)
     } else {
       // 圖示僅適用於自定義類別：改回預設選項時清空
-      setValue("category", next, { shouldValidate: true });
-      setValue("category_icon", undefined);
+      setValue("category", next, { shouldValidate: true })
+      setValue("category_icon", undefined)
     }
   }
 
   const onSubmit = handleSubmit(() => {
     // Rule: 參與分攤的團員至少一人（client 端先擋，server 端仍會驗證）
     if (checkedMembers.length === 0) {
-      setServerError("參與分攤的團員至少一人");
-      return;
+      setServerError("參與分攤的團員至少一人")
+      return
     }
 
-    setServerError(undefined);
+    setServerError(undefined)
     startTransition(async () => {
-      const result = await addExpense({}, new FormData(formRef.current!));
+      const result = await addExpense({}, new FormData(formRef.current!))
 
       if (result.error) {
-        setServerError(result.error);
-        return;
+        setServerError(result.error)
+        return
       }
 
-      toast.success("開支新增成功");
-      resetForm();
-      setOpen(false);
-    });
-  });
+      toast.success("開支新增成功")
+      resetForm()
+      setOpen(false)
+    })
+  })
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        setOpen(next);
+        setOpen(next)
         if (next) {
           // Rule: 開支日期未指定時預設為當天（以使用者裝置時區帶入預設值）
-          setValue("expense_date", localToday());
+          setValue("expense_date", localToday())
         } else {
-          resetForm();
-          setServerError(undefined);
+          resetForm()
+          setServerError(undefined)
         }
       }}
     >
@@ -212,7 +209,6 @@ export function AddExpenseDialog({
           )}
 
           <input type="hidden" {...register("trip_id")} />
-
           <div className="space-y-2">
             <Label htmlFor="expense-name">標題</Label>
             <Input
@@ -329,10 +325,17 @@ export function AddExpenseDialog({
 
             <div className="space-y-2">
               <Label htmlFor="expense-date">何時</Label>
-              <Input
+              <input type="hidden" {...register("expense_date")} />
+              <InputDate
                 id="expense-date"
-                type="date"
-                {...register("expense_date")}
+                date={expenseDate ? parseDateValue(expenseDate) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    setValue("expense_date", formatDateValue(date), {
+                      shouldValidate: true,
+                    })
+                  }
+                }}
               />
               {errors.expense_date && (
                 <p className="text-sm text-destructive">
@@ -357,7 +360,7 @@ export function AddExpenseDialog({
 
             <ul className="divide-y rounded-lg border">
               {members.map((member) => {
-                const isChecked = checked[member.id] ?? false;
+                const isChecked = checked[member.id] ?? false
                 return (
                   <li
                     key={member.id}
@@ -407,7 +410,7 @@ export function AddExpenseDialog({
                       />
                     )}
                   </li>
-                );
+                )
               })}
             </ul>
 
@@ -436,5 +439,5 @@ export function AddExpenseDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
