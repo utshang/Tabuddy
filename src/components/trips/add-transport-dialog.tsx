@@ -152,7 +152,6 @@ export function AddTransportDialog({
                 id="hours"
                 type="number"
                 min={0}
-                placeholder="0"
                 {...register("hours")}
               />
               {errors.hours && (
@@ -169,7 +168,6 @@ export function AddTransportDialog({
                 type="number"
                 min={0}
                 max={59}
-                placeholder="0"
                 {...register("minutes")}
               />
               {errors.minutes && (
@@ -211,7 +209,6 @@ export function AddTransportDialog({
                 <Input
                   id="mode"
                   type="text"
-                  placeholder="腳踏車"
                   {...register("mode")}
                 />
                 {errors.mode && (
@@ -226,7 +223,6 @@ export function AddTransportDialog({
                 <Input
                   id="icon"
                   type="text"
-                  placeholder="🚲"
                   {...register("icon")}
                 />
                 <p className="text-xs text-muted-foreground">

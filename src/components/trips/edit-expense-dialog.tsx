@@ -230,7 +230,6 @@ export function EditExpenseDialog({
             <Input
               id={`edit-expense-name-${expense.id}`}
               type="text"
-              placeholder="例如：飲料"
               {...register("name")}
             />
             {errors.name && (
@@ -273,7 +272,6 @@ export function EditExpenseDialog({
                 <Input
                   id={`edit-expense-category-${expense.id}`}
                   type="text"
-                  placeholder="例如：門票"
                   {...register("category")}
                 />
                 {errors.category && (
@@ -290,7 +288,6 @@ export function EditExpenseDialog({
                 <Input
                   id={`edit-expense-category-icon-${expense.id}`}
                   type="text"
-                  placeholder="🎫"
                   {...register("category_icon")}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -311,7 +308,6 @@ export function EditExpenseDialog({
                 type="number"
                 step="0.01"
                 min="0.01"
-                placeholder="0"
                 className="pl-7"
                 {...register("amount")}
               />
@@ -418,7 +414,6 @@ export function EditExpenseDialog({
                         type="number"
                         step="0.01"
                         min="0"
-                        placeholder="0"
                         className="h-8 w-24 text-right"
                         name={`custom_amount_${member.id}`}
                         value={customAmounts[member.id] ?? ""}

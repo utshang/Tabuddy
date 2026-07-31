@@ -41,7 +41,6 @@ export function SignupForm({ serverError }: SignupFormProps) {
         <Input
           id="name"
           type="text"
-          placeholder="你的名字"
           autoComplete="name"
           {...register('name')}
         />
@@ -55,7 +54,6 @@ export function SignupForm({ serverError }: SignupFormProps) {
         <Input
           id="email"
           type="email"
-          placeholder="you@example.com"
           autoComplete="email"
           {...register('email')}
         />
