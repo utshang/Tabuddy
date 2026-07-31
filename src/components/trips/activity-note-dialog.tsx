@@ -1,5 +1,6 @@
 "use client"
 
+import { MapPin } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -34,7 +35,11 @@ export function ActivityNoteDialog({
   open,
   onOpenChange,
 }: {
-  activity: { name: string; note: string | null }
+  activity: {
+    name: string
+    note: string | null
+    google_map_url: string | null
+  }
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -42,7 +47,21 @@ export function ActivityNoteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{activity.name}</DialogTitle>
+          <DialogTitle>
+            {activity.google_map_url ? (
+              <a
+                href={activity.google_map_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-start gap-1 text-primary hover:underline"
+              >
+                <MapPin className="mt-[3px] size-3.5 shrink-0" />
+                <span className="wrap-break-word">{activity.name}</span>
+              </a>
+            ) : (
+              activity.name
+            )}
+          </DialogTitle>
         </DialogHeader>
         {activity.note ? (
           <p className="wrap-break-word whitespace-pre-wrap text-sm text-muted-foreground">
