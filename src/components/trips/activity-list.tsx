@@ -18,11 +18,12 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { GripVertical, MapPin, TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
+import { type KeyboardEvent, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { reorderActivity } from "@/lib/actions/activities"
 import { Card, CardContent } from "@/components/ui/card"
-import { EditActivityDialog } from "@/components/trips/edit-activity-dialog"
-import { DeleteActivityDialog } from "@/components/trips/delete-activity-dialog"
+import { ActivityNoteDialog } from "@/components/trips/activity-note-dialog"
+import { ActivityActionsMenu } from "@/components/trips/activity-actions-menu"
 import { AddTransportDialog } from "@/components/trips/add-transport-dialog"
 import { TransportActionsMenu } from "@/components/trips/transport-actions-menu"
 import { getTransportIcon } from "@/lib/transport-modes"
@@ -187,29 +188,6 @@ function formatShortDate(date: string) {
   return `${Number(month)}/${Number(day)}`
 }
 
-// Rule: 備註內的網址自動轉為可點擊連結
-const URL_PATTERN = /(https?:\/\/[^\s]+)/g
-
-function renderNoteWithLinks(note: string) {
-  // split 搭配有 capturing group 的 regex 時，奇數 index 一定是命中的網址，偶數是純文字
-  return note.split(URL_PATTERN).map((part, i) =>
-    i % 2 === 1 ? (
-      // biome-ignore lint: 靜態片段順序不變，用 index 當 key 沒問題
-      <a
-        key={i}
-        href={part}
-        target="_blank"
-        rel="noreferrer"
-        className="break-all text-primary underline"
-      >
-        {part}
-      </a>
-    ) : (
-      part
-    ),
-  )
-}
-
 // Rule: 前面行程累加時間早於指定時間時，中間顯示空閒時間
 function formatIdleDuration(minutes: number) {
   const hours = Math.floor(minutes / 60)
@@ -240,6 +218,16 @@ function SortableActivityItem({
     transition,
     isDragging,
   } = useSortable({ id: activity.id })
+  const [noteOpen, setNoteOpen] = useState(false)
+
+  // 只在按鍵事件「直接」發生在整個行程卡片本身時才開啟備註彈窗；
+  // 若是從內部的拖曳把手／連結／編輯／刪除按鈕冒泡上來（例如用鍵盤拖曳時按 Space），則忽略，避免互相搶按鍵
+  function handleNoteKeyDown(event: KeyboardEvent) {
+    if (event.target !== event.currentTarget) return
+    if (event.key !== "Enter" && event.key !== " ") return
+    event.preventDefault()
+    setNoteOpen(true)
+  }
 
   return (
     <li
@@ -272,13 +260,21 @@ function SortableActivityItem({
           <span className="w-px flex-1 bg-border" />
         </div>
         <div className="min-w-0 flex-1 pb-2">
-          <Card size="sm">
+          <Card
+            size="sm"
+            role="button"
+            tabIndex={0}
+            className="cursor-pointer transition-colors hover:bg-accent/50"
+            onClick={() => setNoteOpen(true)}
+            onKeyDown={handleNoteKeyDown}
+          >
             <CardContent className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-start gap-2">
                 <button
                   type="button"
                   aria-label="拖曳以調整順序"
                   className="mt-1 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+                  onClick={(e) => e.stopPropagation()}
                   {...attributes}
                   {...listeners}
                 >
@@ -291,6 +287,7 @@ function SortableActivityItem({
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex wrap-break-word gap-1 font-medium text-primary hover:underline"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <MapPin className="size-3.5 mt-[2px]" />
                       {activity.name}
@@ -301,19 +298,23 @@ function SortableActivityItem({
                   <p className="text-xs text-muted-foreground">
                     停留 {activity.duration_minutes} 分鐘
                   </p>
-                  {activity.note && (
-                    <p className="wrap-break-word text-xs text-muted-foreground">
-                      {renderNoteWithLinks(activity.note)}
-                    </p>
-                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <EditActivityDialog activity={activity} />
-                <DeleteActivityDialog tripId={tripId} activity={activity} />
+              <div
+                className="flex items-center gap-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ActivityActionsMenu tripId={tripId} activity={activity} />
               </div>
             </CardContent>
           </Card>
+          {/* 刻意放在 Card 外面：DialogContent 是透過 portal 掛載，React 的合成事件仍會沿著元件樹往上冒泡，
+              放在 Card 內部會導致點擊彈窗的關閉按鈕時，事件也會冒泡觸發 Card 的 onClick 而重新打開彈窗 */}
+          <ActivityNoteDialog
+            activity={activity}
+            open={noteOpen}
+            onOpenChange={setNoteOpen}
+          />
         </div>
       </div>
 
