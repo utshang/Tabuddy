@@ -15,6 +15,23 @@ export function DayTabsNav({
   const suppressScrollSpyRef = useRef(false)
   const dayIdsKey = days.map((day) => day.id).join(",")
 
+  // 上方還疊了一層「返回連結 + 標題 + 行程/記帳」的 sticky 頁首（trip-tabs.tsx
+  // 的 #trip-page-header），這層日期分頁要貼在它下面，而不是視窗最上方。用
+  // ResizeObserver 量測該頁首的實際高度，頁首因內容（例如旅程名稱換行）改變
+  // 高度時也會自動跟著調整位置。
+  const [pageHeaderHeight, setPageHeaderHeight] = useState(0)
+
+  useEffect(() => {
+    const pageHeader = document.getElementById("trip-page-header")
+    if (!pageHeader) return
+
+    const observer = new ResizeObserver(([entry]) => {
+      setPageHeaderHeight(entry.contentRect.height)
+    })
+    observer.observe(pageHeader)
+    return () => observer.disconnect()
+  }, [])
+
   // 用 IntersectionObserver 取代手動監聽 scroll + getBoundingClientRect：
   // 每個活動的圖片、備註等內容非同步載入時都可能讓區塊高度變動，手動算法只在
   // scroll 事件當下取樣一次，錯過之後的版面偏移；IntersectionObserver 會在
@@ -22,7 +39,11 @@ export function DayTabsNav({
   useEffect(() => {
     if (days.length === 0) return
 
-    const headerHeight = headerRef.current?.offsetHeight ?? 0
+    const headerHeight = pageHeaderHeight + (headerRef.current?.offsetHeight ?? 0)
+    document.documentElement.style.setProperty(
+      "--sticky-offset",
+      `${headerHeight}px`,
+    )
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -46,7 +67,7 @@ export function DayTabsNav({
 
     return () => observer.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dayIdsKey])
+  }, [dayIdsKey, pageHeaderHeight])
 
   function handleChange(value: unknown) {
     const dayId = String(value)
@@ -78,7 +99,8 @@ export function DayTabsNav({
   return (
     <div
       ref={headerRef}
-      className="sticky top-0 z-10 bg-background/95 py-2"
+      className="sticky z-10 bg-background/95 py-2"
+      style={{ top: `${pageHeaderHeight}px` }}
     >
       <Tabs value={active} onValueChange={handleChange}>
         <TabsList className="h-16 w-full justify-start gap-1 overflow-x-auto overscroll-x-contain scrollbar-none [&::-webkit-scrollbar]:hidden">

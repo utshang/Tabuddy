@@ -55,7 +55,7 @@ export function ItineraryBoard({
           <section
             key={day.id}
             id={`day-${day.id}`}
-            className="scroll-mt-20 space-y-3"
+            className="scroll-mt-[var(--sticky-offset,80px)] space-y-3"
           >
             <div className="flex items-baseline justify-between gap-2">
               <div>

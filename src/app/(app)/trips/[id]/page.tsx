@@ -125,44 +125,45 @@ export default async function TripPage({
 
   const itinerary = <ItineraryBoard tripId={trip.id} initialDays={trip.days} />;
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <Link
-          href="/dashboard"
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          ← 我的旅程
-        </Link>
-        <h1 className="mt-1 text-2xl font-bold text-primary tracking-tight">
-          {trip.name}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {trip.start_date} ~ {trip.end_date}
-        </p>
-      </div>
-
-      <TripTabs
-        itinerary={itinerary}
-        ledger={
-          <LedgerTabs
-            expenses={
-              <ExpenseLedger
-                tripId={trip.id}
-                expenses={expenses}
-                members={members}
-              />
-            }
-            settlement={
-              <SettlementView
-                tripId={trip.id}
-                members={settlementMembers}
-                transfers={settlementTransfers}
-              />
-            }
-          />
-        }
-      />
+  const header = (
+    <div>
+      <Link
+        href="/dashboard"
+        className="text-sm text-muted-foreground hover:underline"
+      >
+        ← 我的旅程
+      </Link>
+      <h1 className="mt-1 text-2xl font-bold text-primary tracking-tight">
+        {trip.name}
+      </h1>
+      <p className="text-sm text-muted-foreground">
+        {trip.start_date} ~ {trip.end_date}
+      </p>
     </div>
+  );
+
+  return (
+    <TripTabs
+      header={header}
+      itinerary={itinerary}
+      ledger={
+        <LedgerTabs
+          expenses={
+            <ExpenseLedger
+              tripId={trip.id}
+              expenses={expenses}
+              members={members}
+            />
+          }
+          settlement={
+            <SettlementView
+              tripId={trip.id}
+              members={settlementMembers}
+              transfers={settlementTransfers}
+            />
+          }
+        />
+      }
+    />
   );
 }
