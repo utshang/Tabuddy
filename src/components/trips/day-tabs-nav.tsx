@@ -13,41 +13,40 @@ export function DayTabsNav({
   )
   const headerRef = useRef<HTMLDivElement>(null)
   const suppressScrollSpyRef = useRef(false)
+  const dayIdsKey = days.map((day) => day.id).join(",")
 
+  // 用 IntersectionObserver 取代手動監聽 scroll + getBoundingClientRect：
+  // 每個活動的圖片、備註等內容非同步載入時都可能讓區塊高度變動，手動算法只在
+  // scroll 事件當下取樣一次，錯過之後的版面偏移；IntersectionObserver 會在
+  // 版面變動時自動重新觸發，天數分頁的 active 狀態才會持續跟著實際捲動位置走。
   useEffect(() => {
     if (days.length === 0) return
 
-    let ticking = false
+    const headerHeight = headerRef.current?.offsetHeight ?? 0
 
-    function updateActiveFromScroll() {
-      ticking = false
-      if (suppressScrollSpyRef.current) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (suppressScrollSpyRef.current) return
 
-      const triggerLine = (headerRef.current?.offsetHeight ?? 0) + 1
+        const topMost = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
 
-      let currentId: string | undefined
-      for (const day of days) {
-        const top = document
-          .getElementById(`day-${day.id}`)
-          ?.getBoundingClientRect().top
+        if (topMost) {
+          setActive(topMost.target.id.replace("day-", ""))
+        }
+      },
+      { rootMargin: `-${headerHeight}px 0px -70% 0px` },
+    )
 
-        if (top === undefined || top > triggerLine) break
-        currentId = String(day.id)
-      }
-
-      if (currentId !== undefined) setActive(currentId)
+    for (const day of days) {
+      const el = document.getElementById(`day-${day.id}`)
+      if (el) observer.observe(el)
     }
 
-    function handleScroll() {
-      if (ticking) return
-      ticking = true
-      requestAnimationFrame(updateActiveFromScroll)
-    }
-
-    updateActiveFromScroll()
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [days])
+    return () => observer.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayIdsKey])
 
   function handleChange(value: unknown) {
     const dayId = String(value)
