@@ -187,6 +187,29 @@ function formatShortDate(date: string) {
   return `${Number(month)}/${Number(day)}`
 }
 
+// Rule: 備註內的網址自動轉為可點擊連結
+const URL_PATTERN = /(https?:\/\/[^\s]+)/g
+
+function renderNoteWithLinks(note: string) {
+  // split 搭配有 capturing group 的 regex 時，奇數 index 一定是命中的網址，偶數是純文字
+  return note.split(URL_PATTERN).map((part, i) =>
+    i % 2 === 1 ? (
+      // biome-ignore lint: 靜態片段順序不變，用 index 當 key 沒問題
+      <a
+        key={i}
+        href={part}
+        target="_blank"
+        rel="noreferrer"
+        className="break-all text-primary underline"
+      >
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  )
+}
+
 // Rule: 前面行程累加時間早於指定時間時，中間顯示空閒時間
 function formatIdleDuration(minutes: number) {
   const hours = Math.floor(minutes / 60)
@@ -280,7 +303,7 @@ function SortableActivityItem({
                   </p>
                   {activity.note && (
                     <p className="wrap-break-word text-xs text-muted-foreground">
-                      {activity.note}
+                      {renderNoteWithLinks(activity.note)}
                     </p>
                   )}
                 </div>
