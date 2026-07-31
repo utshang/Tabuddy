@@ -17,6 +17,11 @@ const bevan = Bevan({
 export const metadata: Metadata = {
   title: "Tabuddy — Plan the trip, split the tab.",
   description: "Collaborative trip planning with built-in expense splitting.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Tabuddy",
+  },
 }
 
 export const viewport: Viewport = {
@@ -24,6 +29,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#349ce1",
 }
 
 export default function RootLayout({

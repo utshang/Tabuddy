@@ -29,10 +29,14 @@ Tagline: **Plan the trip, split the tab.**（一起排行程，分帳像好麻�
 ## 範圍紀律（重要）
 
 只做 MVP。以下**一律不要做**，全部延後：
-地圖整合、AI 行程生成、訂房訂票 email 匯入、離線 / PWA、多幣別、PDF 匯出、
-協作游標（最多當 stretch goal）。
+地圖整合、AI 行程生成、訂房訂票 email 匯入、離線支援（Service Worker、離線快取、
+離線寫入衝突處理）、多幣別、PDF 匯出、協作游標（最多當 stretch goal）。
 
 只要不在下面的 MVP 清單裡，先問再做。
+
+**例外**：最小 `manifest.json`（`display: standalone` + icon，讓「加入主畫面」以
+獨立視窗開啟、不再每次跳新分頁）已完成，屬於加到主畫面的體驗，不算離線 PWA，
+已排除在上述限制之外。
 
 ## MVP 功能（範圍邊界；詳細規則見 `spec/features/`）
 
