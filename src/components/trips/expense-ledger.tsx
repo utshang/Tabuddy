@@ -49,7 +49,7 @@ export function ExpenseLedger({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div className="grid grid-cols-2 gap-4 text-center">
         <div>
           <p className="text-sm text-muted-foreground">我的開支</p>
@@ -111,7 +111,7 @@ export function ExpenseLedger({
         </div>
       )}
 
-      <div className="flex justify-center pt-2">
+      <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center bg-gradient-to-t from-background via-background/95 to-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-6">
         <AddExpenseDialog tripId={tripId} members={members} />
       </div>
     </div>
