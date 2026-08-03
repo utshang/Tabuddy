@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { InputSelect } from "@/components/ui/input-select"
 import {
   Dialog,
   DialogContent,
@@ -183,19 +184,18 @@ export function EditTransportDialog({
             <Label htmlFor={`edit-transport-mode-option-${activityId}`}>
               交通工具
             </Label>
-            <select
+            <InputSelect
               id={`edit-transport-mode-option-${activityId}`}
               value={modeOption}
-              onChange={(e) => handleModeOptionChange(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              {TRANSPORT_MODE_PRESETS.map((preset) => (
-                <option key={preset.value} value={preset.value}>
-                  {preset.icon} {preset.value}
-                </option>
-              ))}
-              <option value={CUSTOM_OPTION}>✏️ 自訂交通工具…</option>
-            </select>
+              onValueChange={handleModeOptionChange}
+              options={[
+                ...TRANSPORT_MODE_PRESETS.map((preset) => ({
+                  value: preset.value,
+                  label: `${preset.icon} ${preset.value}`,
+                })),
+                { value: CUSTOM_OPTION, label: "✏️ 自訂交通工具…" },
+              ]}
+            />
           </div>
 
           {!isCustomMode && (

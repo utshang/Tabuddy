@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InputDate } from "@/components/ui/input-date";
+import { InputSelect } from "@/components/ui/input-select";
 import {
   Dialog,
   DialogContent,
@@ -31,9 +32,6 @@ import type { ExpenseMember } from "@/components/trips/add-expense-dialog";
 import { formatDateValue, parseDateValue } from "@/lib/date";
 
 const CUSTOM_OPTION = "__custom__";
-
-const selectClassName =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50";
 
 export type EditableExpense = {
   id: number;
@@ -108,6 +106,7 @@ export function EditExpenseDialog({
   });
 
   const splitType = useWatch({ control, name: "split_type" });
+  const payerId = useWatch({ control, name: "payer_id" });
   const watchedAmount = Number(useWatch({ control, name: "amount" }));
   const expenseDate = useWatch({ control, name: "expense_date" });
 
@@ -241,19 +240,18 @@ export function EditExpenseDialog({
             <Label htmlFor={`edit-expense-category-option-${expense.id}`}>
               類別
             </Label>
-            <select
+            <InputSelect
               id={`edit-expense-category-option-${expense.id}`}
               value={categoryOption}
-              onChange={(e) => handleCategoryOptionChange(e.target.value)}
-              className={selectClassName}
-            >
-              {EXPENSE_CATEGORY_PRESETS.map((preset) => (
-                <option key={preset.value} value={preset.value}>
-                  {preset.icon} {preset.value}
-                </option>
-              ))}
-              <option value={CUSTOM_OPTION}>✏️ 新增自定義類別…</option>
-            </select>
+              onValueChange={handleCategoryOptionChange}
+              options={[
+                ...EXPENSE_CATEGORY_PRESETS.map((preset) => ({
+                  value: preset.value,
+                  label: `${preset.icon} ${preset.value}`,
+                })),
+                { value: CUSTOM_OPTION, label: "✏️ 新增自定義類別…" },
+              ]}
+            />
           </div>
 
           {!isCustomCategory && (
@@ -322,18 +320,18 @@ export function EditExpenseDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor={`edit-expense-payer-${expense.id}`}>支付者</Label>
-              <select
+              <InputSelect
                 id={`edit-expense-payer-${expense.id}`}
-                className={selectClassName}
-                {...register("payer_id")}
-              >
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                    {m.isMe && "（我）"}
-                  </option>
-                ))}
-              </select>
+                name="payer_id"
+                value={payerId}
+                onValueChange={(v) =>
+                  setValue("payer_id", v, { shouldValidate: true })
+                }
+                options={members.map((m) => ({
+                  value: m.id,
+                  label: `${m.name}${m.isMe ? "（我）" : ""}`,
+                }))}
+              />
               {errors.payer_id && (
                 <p className="text-sm text-destructive">
                   {errors.payer_id.message}
@@ -366,14 +364,21 @@ export function EditExpenseDialog({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>分攤</Label>
-              <select
+              <InputSelect
                 aria-label="分攤方式"
-                className={`${selectClassName} h-8 w-auto`}
-                {...register("split_type")}
-              >
-                <option value="even">平均分配</option>
-                <option value="custom">自訂金額</option>
-              </select>
+                name="split_type"
+                className="h-8 w-auto"
+                value={splitType}
+                onValueChange={(v) =>
+                  setValue("split_type", v as "even" | "custom", {
+                    shouldValidate: true,
+                  })
+                }
+                options={[
+                  { value: "even", label: "平均分配" },
+                  { value: "custom", label: "自訂金額" },
+                ]}
+              />
             </div>
 
             <ul className="divide-y rounded-lg border">
