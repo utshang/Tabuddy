@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { DayTabsNav } from "@/components/trips/day-tabs-nav";
-import { AddActivityDialog } from "@/components/trips/add-activity-dialog";
+import { ActivityFormDialog } from "@/components/trips/activity-form-dialog";
 import { ActivityList } from "@/components/trips/activity-list";
 import { DayStartTimeDialog } from "@/components/trips/day-start-time-dialog";
 import { useItineraryRealtime } from "@/hooks/use-itinerary-realtime";
@@ -64,7 +64,7 @@ export function ItineraryBoard({
                 </h2>
                 <DayStartTimeDialog dayId={day.id} startTime={day.start_time} />
               </div>
-              <AddActivityDialog tripId={tripId} dayId={day.id} />
+              <ActivityFormDialog mode="create" tripId={tripId} dayId={day.id} />
             </div>
 
             <ActivityList

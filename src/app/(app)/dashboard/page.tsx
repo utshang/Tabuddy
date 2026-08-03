@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { AuthMessageToast } from "@/components/auth/auth-message-toast";
-import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
+import { TripFormDialog } from "@/components/trips/trip-form-dialog";
 import { TripCard } from "@/components/trips/trip-card";
 import { JoinTripHandler } from "@/components/trips/join-trip-handler";
 
@@ -40,7 +40,7 @@ export default async function DashboardPage() {
             ！一起來規劃下一趟旅程吧。
           </p>
         </div>
-        <CreateTripDialog />
+        <TripFormDialog mode="create" />
       </div>
 
       {trips.length === 0 ? (

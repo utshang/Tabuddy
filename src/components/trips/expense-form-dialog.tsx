@@ -1,25 +1,24 @@
-"use client";
+"use client"
 
-import { useRef, useState, useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import { editExpense } from "@/lib/actions/expenses";
-import {
-  editExpenseFormSchema,
-  type EditExpenseFormValues,
-} from "@/lib/validations/expenses";
+import { useMemo, useRef, useState, useTransition } from "react"
+import { useForm, useWatch } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import type { z } from "zod"
+import { Plus } from "lucide-react"
+import { toast } from "sonner"
+import { addExpense, editExpense } from "@/lib/actions/expenses"
+import { editExpenseFormSchema } from "@/lib/validations/expenses"
 import {
   EXPENSE_CATEGORY_PRESETS,
   isPresetCategory,
-} from "@/lib/expense-categories";
-import { splitEvenly } from "@/lib/expense-split";
-import { formatYen } from "@/lib/currency";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { InputDate } from "@/components/ui/input-date";
-import { InputSelect } from "@/components/ui/input-select";
+} from "@/lib/expense-categories"
+import { splitEvenly } from "@/lib/expense-split"
+import { formatYen } from "@/lib/currency"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { InputDate } from "@/components/ui/input-date"
+import { InputSelect } from "@/components/ui/input-select"
 import {
   Dialog,
   DialogContent,
@@ -27,71 +26,113 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import type { ExpenseMember } from "@/components/trips/add-expense-dialog";
-import { formatDateValue, parseDateValue } from "@/lib/date";
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { formatDateValue, localToday, parseDateValue } from "@/lib/date"
 
-const CUSTOM_OPTION = "__custom__";
+const CUSTOM_OPTION = "__custom__"
+
+// 新增與編輯開支共用同一組欄位（不含 trip_id / expense_id，兩者以隱藏欄位另外送出）
+const expenseFieldsSchema = editExpenseFormSchema.omit({ expense_id: true })
+type ExpenseFormValues = z.input<typeof expenseFieldsSchema>
+
+export type ExpenseMember = {
+  /** 依加入旅程的先後順序排列 */
+  id: string
+  name: string
+  isMe: boolean
+}
 
 export type EditableExpense = {
-  id: number;
-  name: string;
-  amount: number;
-  category: string;
-  category_icon: string | null;
-  expense_date: string;
-  payer_id: string;
-  split_type: "even" | "custom";
+  id: number
+  name: string
+  amount: number
+  category: string
+  category_icon: string | null
+  expense_date: string
+  payer_id: string
+  split_type: "even" | "custom"
   /** 既有分攤明細：user_id → 分攤金額 */
-  splits: Record<string, number>;
-};
+  splits: Record<string, number>
+}
 
-export function EditExpenseDialog({
-  expense,
-  members,
-  open,
-  onOpenChange,
-}: {
-  expense: EditableExpense;
-  members: ExpenseMember[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const [serverError, setServerError] = useState<string>();
-  const [isPending, startTransition] = useTransition();
-  const initialCategoryOption = isPresetCategory(expense.category)
-    ? expense.category
-    : CUSTOM_OPTION;
+type ExpenseFormDialogProps =
+  | { mode: "create"; tripId: number; members: ExpenseMember[] }
+  | {
+      mode: "edit"
+      expense: EditableExpense
+      members: ExpenseMember[]
+      open: boolean
+      onOpenChange: (open: boolean) => void
+    }
+
+// 新增與編輯開支共用欄位、分攤試算與參與者勾選邏輯，差異只在初始值、送出的 server action
+// 與部分自訂類別／分攤金額的「還原原值 vs 清空」規則，故合併成單一元件、以 mode 區分。
+export function ExpenseFormDialog(props: ExpenseFormDialogProps) {
+  const isEdit = props.mode === "edit"
+  const expense = isEdit ? props.expense : undefined
+  const members = props.members
+  const idSuffix = isEdit ? `-${expense!.id}` : ""
+
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = isEdit ? props.open : internalOpen
+  const setOpen = isEdit ? props.onOpenChange : setInternalOpen
+
+  const [serverError, setServerError] = useState<string>()
+  const [isPending, startTransition] = useTransition()
+
+  const initialCategoryOption = isEdit
+    ? isPresetCategory(expense!.category)
+      ? expense!.category
+      : CUSTOM_OPTION
+    : EXPENSE_CATEGORY_PRESETS[0].value
   const [categoryOption, setCategoryOption] = useState<string>(
     initialCategoryOption,
-  );
+  )
   // Rule: 編輯分攤方式而未重新指定參與者時沿用原參與者名單（以既有分攤明細預填勾選）
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(members.map((m) => [m.id, m.id in expense.splits])),
-  );
-  // 自訂金額以既有明細預填；僅修改開支金額時分攤總和將不再對平，送出會被擋下
+    Object.fromEntries(
+      members.map((m) => [m.id, isEdit ? m.id in expense!.splits : true]),
+    ),
+  )
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>(
     () =>
-      Object.fromEntries(
-        Object.entries(expense.splits).map(([id, amount]) => [
-          id,
-          String(amount),
-        ]),
-      ),
-  );
-  const formRef = useRef<HTMLFormElement>(null);
-  const isCustomCategory = categoryOption === CUSTOM_OPTION;
+      isEdit
+        ? Object.fromEntries(
+            Object.entries(expense!.splits).map(([id, amount]) => [
+              id,
+              String(amount),
+            ]),
+          )
+        : {},
+  )
+  const formRef = useRef<HTMLFormElement>(null)
+  const isCustomCategory = categoryOption === CUSTOM_OPTION
+  const me = !isEdit ? members.find((m) => m.isMe) : undefined
 
-  const initialValues: EditExpenseFormValues = {
-    expense_id: expense.id,
-    name: expense.name,
-    amount: expense.amount,
-    category: expense.category,
-    category_icon: expense.category_icon ?? undefined,
-    payer_id: expense.payer_id,
-    expense_date: expense.expense_date,
-    split_type: expense.split_type,
-  };
+  const defaultValues: ExpenseFormValues = useMemo(
+    () =>
+      isEdit
+        ? {
+            name: expense!.name,
+            amount: expense!.amount,
+            category: expense!.category,
+            category_icon: expense!.category_icon ?? undefined,
+            payer_id: expense!.payer_id,
+            expense_date: expense!.expense_date,
+            split_type: expense!.split_type,
+          }
+        : {
+            name: "",
+            amount: "",
+            category: EXPENSE_CATEGORY_PRESETS[0].value,
+            category_icon: undefined,
+            payer_id: me?.id ?? "",
+            expense_date: "",
+            split_type: "even",
+          },
+    [isEdit, expense, me?.id],
+  )
 
   const {
     register,
@@ -100,118 +141,147 @@ export function EditExpenseDialog({
     setValue,
     control,
     formState: { errors },
-  } = useForm<EditExpenseFormValues>({
-    resolver: zodResolver(editExpenseFormSchema),
-    defaultValues: initialValues,
-  });
+  } = useForm<ExpenseFormValues>({
+    resolver: zodResolver(expenseFieldsSchema),
+    defaultValues,
+  })
 
-  const splitType = useWatch({ control, name: "split_type" });
-  const payerId = useWatch({ control, name: "payer_id" });
-  const watchedAmount = Number(useWatch({ control, name: "amount" }));
-  const expenseDate = useWatch({ control, name: "expense_date" });
+  const splitType = useWatch({ control, name: "split_type" })
+  const payerId = useWatch({ control, name: "payer_id" })
+  const watchedAmount = Number(useWatch({ control, name: "amount" }))
+  const expenseDate = useWatch({ control, name: "expense_date" }) as
+    | string
+    | undefined
 
-  const checkedMembers = members.filter((m) => checked[m.id]);
+  const checkedMembers = members.filter((m) => checked[m.id])
 
-  // Rule: 編輯後採均分時金額平均分配至小數第二位，尾差以 0.01 依參與者加入旅程的先後順序分配給前幾位參與者
+  // Rule: 均分時金額平均分配至小數第二位，尾差以 0.01 依參與者加入旅程的先後順序分配給前幾位參與者
   // members 已依加入順序排列，此處即時預覽每位參與者的分攤金額（與 server 端計算共用同一純函式）
   const evenShares = (() => {
-    if (splitType !== "even" || checkedMembers.length === 0) return null;
+    if (splitType !== "even" || checkedMembers.length === 0) return null
     try {
-      const shares = splitEvenly(watchedAmount, checkedMembers.length);
+      const shares = splitEvenly(watchedAmount, checkedMembers.length)
       return Object.fromEntries(
         checkedMembers.map((m, i) => [m.id, shares[i]]),
-      ) as Record<string, number>;
+      ) as Record<string, number>
     } catch {
-      return null;
+      return null
     }
-  })();
+  })()
 
-  // Rule: 編輯後採自訂金額時各參與者分攤金額之和必須等於開支金額（即時顯示差額）
+  // Rule: 自訂金額時各參與者分攤金額之和必須等於開支金額（即時顯示差額）
   const customSummary = (() => {
-    if (splitType !== "custom") return null;
+    if (splitType !== "custom") return null
+    // 把所有勾選的參與者各自填的自訂分攤金額逐一 × 100 加總起來，同樣以分為單位
     const sumCents = checkedMembers.reduce((sum, m) => {
-      const value = Number(customAmounts[m.id] ?? "");
-      if (!Number.isFinite(value)) return sum;
-      return sum + Math.round(value * 100);
-    }, 0);
+      const value = Number(customAmounts[m.id] ?? "")
+      if (!Number.isFinite(value)) return sum
+      return sum + Math.round(value * 100)
+    }, 0)
+    // 使用者在「金額」欄位輸入的開支總額，換算成分。例如輸入 350.5 元 → 35050
     const amountCents = Number.isFinite(watchedAmount)
       ? Math.round(watchedAmount * 100)
-      : 0;
-    return { sum: sumCents / 100, diff: (amountCents - sumCents) / 100 };
-  })();
+      : 0
+    // 自訂金額時各參與者分攤金額之和必須等於開支金額
+    return { sum: sumCents / 100, diff: (amountCents - sumCents) / 100 }
+  })()
 
   function resetForm() {
-    setCategoryOption(initialCategoryOption);
+    setCategoryOption(initialCategoryOption)
     setChecked(
-      Object.fromEntries(members.map((m) => [m.id, m.id in expense.splits])),
-    );
-    setCustomAmounts(
       Object.fromEntries(
-        Object.entries(expense.splits).map(([id, amount]) => [
-          id,
-          String(amount),
-        ]),
+        members.map((m) => [m.id, isEdit ? m.id in expense!.splits : true]),
       ),
-    );
-    formRef.current?.reset();
-    reset(initialValues);
+    )
+    setCustomAmounts(
+      isEdit
+        ? Object.fromEntries(
+            Object.entries(expense!.splits).map(([id, amount]) => [
+              id,
+              String(amount),
+            ]),
+          )
+        : {},
+    )
+    formRef.current?.reset()
+    reset(defaultValues)
   }
 
   function handleCategoryOptionChange(next: string) {
-    setCategoryOption(next);
+    setCategoryOption(next)
     if (next === CUSTOM_OPTION) {
       // Rule: 自定義類別的名稱與圖示皆可編輯（切換回原本的自定義類別時還原原值；否則清空待輸入）
-      if (initialCategoryOption === CUSTOM_OPTION) {
-        setValue("category", expense.category, { shouldValidate: true });
-        setValue("category_icon", expense.category_icon ?? undefined);
+      if (isEdit && initialCategoryOption === CUSTOM_OPTION) {
+        setValue("category", expense!.category, { shouldValidate: true })
+        setValue("category_icon", expense!.category_icon ?? undefined)
       } else {
-        setValue("category", "", { shouldValidate: true });
-        setValue("category_icon", undefined);
+        // 類別為必填：切換為自定義時清空，待使用者輸入類別名稱
+        setValue("category", "", { shouldValidate: true })
+        setValue("category_icon", undefined)
       }
     } else {
       // Rule: 類別改為預設選項時圖示自動清除（前端先清空，後端亦強制）
-      setValue("category", next, { shouldValidate: true });
-      setValue("category_icon", undefined);
+      setValue("category", next, { shouldValidate: true })
+      setValue("category_icon", undefined)
     }
   }
 
   const onSubmit = handleSubmit(() => {
-    // Rule: 成員可以編輯分攤方式與參與者，參與分攤的團員至少一人（client 端先擋，server 端仍會驗證）
+    // Rule: 參與分攤的團員至少一人（client 端先擋，server 端仍會驗證）
     if (checkedMembers.length === 0) {
-      setServerError("參與分攤的團員至少一人");
-      return;
+      setServerError("參與分攤的團員至少一人")
+      return
     }
 
-    setServerError(undefined);
+    setServerError(undefined)
     startTransition(async () => {
-      const result = await editExpense({}, new FormData(formRef.current!));
+      const formData = new FormData(formRef.current!)
+      const result = isEdit
+        ? await editExpense({}, formData)
+        : await addExpense({}, formData)
 
       if (result.error) {
-        setServerError(result.error);
-        return;
+        setServerError(result.error)
+        return
       }
 
-      toast.success("開支已更新");
-      onOpenChange(false);
-    });
-  });
+      toast.success(isEdit ? "開支已更新" : "開支新增成功")
+      if (!isEdit) resetForm()
+      setOpen(false)
+    })
+  })
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) {
-          resetForm();
-          setServerError(undefined);
+        setOpen(next)
+        if (next) {
+          // Rule: 開支日期未指定時預設為當天（以使用者裝置時區帶入預設值）
+          if (!isEdit) setValue("expense_date", localToday())
+        } else {
+          resetForm()
+          setServerError(undefined)
         }
       }}
     >
+      {!isEdit && (
+        <DialogTrigger
+          render={
+            <Button className="h-auto flex-col gap-1 rounded-xl px-6 py-3" />
+          }
+        >
+          <Plus className="size-5" />
+          新增開支
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>編輯開支</DialogTitle>
+          <DialogTitle>{isEdit ? "編輯開支" : "新增開支"}</DialogTitle>
           <DialogDescription>
-            修改品項、金額、類別、付款人或分攤方式。
+            {isEdit
+              ? "修改品項、金額、類別、付款人或分攤方式。"
+              : "填寫品項、金額、類別與付款人，並選擇分攤方式。"}
           </DialogDescription>
         </DialogHeader>
 
@@ -222,12 +292,20 @@ export function EditExpenseDialog({
             </div>
           )}
 
-          <input type="hidden" {...register("expense_id")} />
+          {isEdit ? (
+            <input type="hidden" name="expense_id" defaultValue={expense!.id} />
+          ) : (
+            <input
+              type="hidden"
+              name="trip_id"
+              defaultValue={props.mode === "create" ? props.tripId : undefined}
+            />
+          )}
 
           <div className="space-y-2">
-            <Label htmlFor={`edit-expense-name-${expense.id}`}>標題</Label>
+            <Label htmlFor={`expense-name${idSuffix}`}>標題</Label>
             <Input
-              id={`edit-expense-name-${expense.id}`}
+              id={`expense-name${idSuffix}`}
               type="text"
               {...register("name")}
             />
@@ -237,11 +315,9 @@ export function EditExpenseDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`edit-expense-category-option-${expense.id}`}>
-              類別
-            </Label>
+            <Label htmlFor={`category-option${idSuffix}`}>類別</Label>
             <InputSelect
-              id={`edit-expense-category-option-${expense.id}`}
+              id={`category-option${idSuffix}`}
               value={categoryOption}
               onValueChange={handleCategoryOptionChange}
               options={[
@@ -264,11 +340,9 @@ export function EditExpenseDialog({
           {isCustomCategory && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor={`edit-expense-category-${expense.id}`}>
-                  類別名稱
-                </Label>
+                <Label htmlFor={`expense-category${idSuffix}`}>類別名稱</Label>
                 <Input
-                  id={`edit-expense-category-${expense.id}`}
+                  id={`expense-category${idSuffix}`}
                   type="text"
                   {...register("category")}
                 />
@@ -280,11 +354,11 @@ export function EditExpenseDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor={`edit-expense-category-icon-${expense.id}`}>
+                <Label htmlFor={`expense-category-icon${idSuffix}`}>
                   圖示（選填）
                 </Label>
                 <Input
-                  id={`edit-expense-category-icon-${expense.id}`}
+                  id={`expense-category-icon${idSuffix}`}
                   type="text"
                   {...register("category_icon")}
                 />
@@ -296,13 +370,13 @@ export function EditExpenseDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor={`edit-expense-amount-${expense.id}`}>金額</Label>
+            <Label htmlFor={`expense-amount${idSuffix}`}>金額</Label>
             <div className="relative">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
                 ¥
               </span>
               <Input
-                id={`edit-expense-amount-${expense.id}`}
+                id={`expense-amount${idSuffix}`}
                 type="number"
                 step="0.01"
                 min="0.01"
@@ -319,9 +393,9 @@ export function EditExpenseDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor={`edit-expense-payer-${expense.id}`}>支付者</Label>
+              <Label htmlFor={`expense-payer${idSuffix}`}>支付者</Label>
               <InputSelect
-                id={`edit-expense-payer-${expense.id}`}
+                id={`expense-payer${idSuffix}`}
                 name="payer_id"
                 value={payerId}
                 onValueChange={(v) =>
@@ -340,16 +414,16 @@ export function EditExpenseDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`edit-expense-date-${expense.id}`}>何時</Label>
+              <Label htmlFor={`expense-date${idSuffix}`}>何時</Label>
               <input type="hidden" {...register("expense_date")} />
               <InputDate
-                id={`edit-expense-date-${expense.id}`}
+                id={`expense-date${idSuffix}`}
                 date={expenseDate ? parseDateValue(expenseDate) : undefined}
                 onSelect={(date) => {
                   if (date) {
                     setValue("expense_date", formatDateValue(date), {
                       shouldValidate: true,
-                    });
+                    })
                   }
                 }}
               />
@@ -383,7 +457,7 @@ export function EditExpenseDialog({
 
             <ul className="divide-y rounded-lg border">
               {members.map((member) => {
-                const isChecked = checked[member.id] ?? false;
+                const isChecked = checked[member.id] ?? false
                 return (
                   <li
                     key={member.id}
@@ -432,7 +506,7 @@ export function EditExpenseDialog({
                       />
                     )}
                   </li>
-                );
+                )
               })}
             </ul>
 
@@ -455,11 +529,17 @@ export function EditExpenseDialog({
 
           <DialogFooter>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "儲存中…" : "儲存"}
+              {isEdit
+                ? isPending
+                  ? "儲存中…"
+                  : "儲存"
+                : isPending
+                  ? "新增中…"
+                  : "新增"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

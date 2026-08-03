@@ -205,6 +205,7 @@ export async function editTrip(
   })
 
   revalidatePath('/dashboard')
+  revalidatePath(`/trips/${tripId}`)
   return { success: true }
 }
 

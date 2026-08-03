@@ -10,11 +10,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  EditExpenseDialog,
+  ExpenseFormDialog,
   type EditableExpense,
-} from "@/components/trips/edit-expense-dialog";
+  type ExpenseMember,
+} from "@/components/trips/expense-form-dialog";
 import { DeleteExpenseDialog } from "@/components/trips/delete-expense-dialog";
-import type { ExpenseMember } from "@/components/trips/add-expense-dialog";
 
 export function ExpenseActionsMenu({
   expense,
@@ -49,7 +49,8 @@ export function ExpenseActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <EditExpenseDialog
+      <ExpenseFormDialog
+        mode="edit"
         expense={expense}
         members={members}
         open={editOpen}

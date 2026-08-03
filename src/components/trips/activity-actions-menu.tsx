@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { EditActivityDialog } from "@/components/trips/edit-activity-dialog"
+import { ActivityFormDialog } from "@/components/trips/activity-form-dialog"
 import { DeleteActivityDialog } from "@/components/trips/delete-activity-dialog"
 
 type Activity = {
@@ -54,7 +54,8 @@ export function ActivityActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <EditActivityDialog
+      <ActivityFormDialog
+        mode="edit"
         activity={activity}
         open={editOpen}
         onOpenChange={setEditOpen}

@@ -24,7 +24,7 @@ import { reorderActivity } from "@/lib/actions/activities"
 import { Card, CardContent } from "@/components/ui/card"
 import { ActivityNoteDialog } from "@/components/trips/activity-note-dialog"
 import { ActivityActionsMenu } from "@/components/trips/activity-actions-menu"
-import { AddTransportDialog } from "@/components/trips/add-transport-dialog"
+import { TransportFormDialog } from "@/components/trips/transport-form-dialog"
 import { TransportActionsMenu } from "@/components/trips/transport-actions-menu"
 import { getTransportIcon } from "@/lib/transport-modes"
 import {
@@ -345,7 +345,11 @@ function SortableActivityItem({
               />
             </>
           ) : (
-            <AddTransportDialog tripId={activity.trip_id} activityId={activity.id} />
+            <TransportFormDialog
+              mode="create"
+              tripId={activity.trip_id}
+              activityId={activity.id}
+            />
           )}
         </div>
       </div>

@@ -1,18 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteTransport } from "@/lib/actions/transports";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import type { CachedDay, CachedTransport } from "@/lib/itinerary-cache";
 import { itineraryQueryKey } from "@/lib/queries/itinerary";
 
@@ -27,7 +18,6 @@ export function DeleteTransportDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [serverError, setServerError] = useState<string>();
   const queryClient = useQueryClient();
   const queryKey = itineraryQueryKey(transport.trip_id);
 
@@ -58,58 +48,20 @@ export function DeleteTransportDialog({
     },
     onSuccess: () => {
       toast.success("交通時間已刪除");
-      onOpenChange(false);
     },
-    onError: (error, _vars, context) => {
+    onError: (_error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      setServerError(error instanceof Error ? error.message : "刪除交通時間失敗");
     },
   });
 
-  // Rule: 刪除交通時間需經使用者確認才會執行
-  function handleConfirm() {
-    setServerError(undefined);
-    mutation.mutate();
-  }
-
   return (
-    <Dialog
+    <ConfirmDeleteDialog
       open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) setServerError(undefined);
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>確定要刪除這段交通時間嗎？</DialogTitle>
-          <DialogDescription>刪除後無法復原。</DialogDescription>
-        </DialogHeader>
-
-        {serverError && (
-          <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {serverError}
-          </div>
-        )}
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={mutation.isPending}
-          >
-            取消
-          </Button>
-          {/* Rule: 成員可以刪除交通時間 */}
-          <Button
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? "刪除中…" : "確認刪除"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      onOpenChange={onOpenChange}
+      title="確定要刪除這段交通時間嗎？"
+      description="刪除後無法復原。"
+      errorFallback="刪除交通時間失敗"
+      onConfirm={() => mutation.mutateAsync()}
+    />
   );
 }
