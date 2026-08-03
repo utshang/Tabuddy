@@ -70,3 +70,11 @@ export const reorderActivitySchema = z.object({
   // Rule: 目標順序超出有效範圍時操作失敗（下限先驗證為正整數，上限於 action 中對照當日行程數量）
   target_order: z.coerce.number().int().min(1, "目標順序必須大於等於 1"),
 });
+
+// Feature: 調整行程順序（Rule: 行程可跨天搬移）
+export const moveActivityToDaySchema = z.object({
+  activity_id: z.coerce.number().int(),
+  target_day_id: z.coerce.number().int(),
+  // Rule: 目標順序超出有效範圍時操作失敗（下限先驗證為正整數，上限於 action 中對照目標天行程數量）
+  target_order: z.coerce.number().int().min(1, "目標順序必須大於等於 1"),
+});

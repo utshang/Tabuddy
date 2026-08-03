@@ -1,42 +1,43 @@
-"use server";
+"use server"
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
+import { prisma } from "@/lib/prisma"
 import {
   addActivitySchema,
   editActivitySchema,
+  moveActivityToDaySchema,
   reorderActivitySchema,
-} from "@/lib/validations/activities";
-import { computeReorder } from "@/lib/reorder";
+} from "@/lib/validations/activities"
+import { computeCrossDayMove, computeReorder } from "@/lib/reorder"
 
 export type AddActivityState = {
-  error?: string;
-  success?: boolean;
+  error?: string
+  success?: boolean
   activity?: {
-    id: number;
-    day_id: number;
-    trip_id: number;
-    name: string;
-    google_map_url: string | null;
-    duration_minutes: number;
-    note: string | null;
-    order: number;
-    fixed_time: string | null;
-  };
-};
+    id: number
+    day_id: number
+    trip_id: number
+    name: string
+    google_map_url: string | null
+    duration_minutes: number
+    note: string | null
+    order: number
+    fixed_time: string | null
+  }
+}
 
 export async function addActivity(
   _prevState: AddActivityState,
   formData: FormData,
 ): Promise<AddActivityState> {
-  const supabase = await createClient();
+  const supabase = await createClient()
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/login")
 
   const parsed = addActivitySchema.safeParse({
     day_id: formData.get("day_id"),
@@ -45,29 +46,29 @@ export async function addActivity(
     duration_minutes: formData.get("duration_minutes"),
     note: formData.get("note"),
     fixed_time: formData.get("fixed_time"),
-  });
+  })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "新增行程失敗" };
+    return { error: parsed.error.issues[0]?.message ?? "新增行程失敗" }
   }
 
   const { day_id, name, google_map_url, duration_minutes, note, fixed_time } =
-    parsed.data;
+    parsed.data
 
-  const day = await prisma.day.findUniqueOrThrow({ where: { id: day_id } });
+  const day = await prisma.day.findUniqueOrThrow({ where: { id: day_id } })
 
   const membership = await prisma.tripMember.findUnique({
     where: { trip_id_user_id: { trip_id: day.trip_id, user_id: user.id } },
-  });
+  })
 
   // Rule: 使用者必須是旅程成員
   if (!membership) {
-    return { error: "你不是此旅程的成員" };
+    return { error: "你不是此旅程的成員" }
   }
 
   const created = await prisma.$transaction(async (tx) => {
     // Rule: 新增的行程固定加入當天行程順序的最後
-    const activityCount = await tx.activity.count({ where: { day_id } });
+    const activityCount = await tx.activity.count({ where: { day_id } })
 
     // Rule: 成功新增後行程出現在對應旅程日期中
     // Rule: 新增行程時可一併填寫選填資訊
@@ -83,30 +84,30 @@ export async function addActivity(
         fixed_time,
         order: activityCount + 1,
       },
-    });
-  });
+    })
+  })
 
-  revalidatePath(`/trips/${day.trip_id}`);
-  return { success: true, activity: created };
+  revalidatePath(`/trips/${day.trip_id}`)
+  return { success: true, activity: created }
 }
 
 export type EditActivityState = {
-  error?: string;
-  success?: boolean;
-};
+  error?: string
+  success?: boolean
+}
 
 export async function editActivity(
   _prevState: EditActivityState,
   formData: FormData,
 ): Promise<EditActivityState> {
-  const supabase = await createClient();
+  const supabase = await createClient()
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/login")
 
-  const activityId = Number(formData.get("activity_id"));
+  const activityId = Number(formData.get("activity_id"))
 
   const parsed = editActivitySchema.safeParse({
     name: formData.get("name"),
@@ -114,32 +115,32 @@ export async function editActivity(
     duration_minutes: formData.get("duration_minutes"),
     note: formData.get("note"),
     fixed_time: formData.get("fixed_time"),
-  });
+  })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "編輯行程失敗" };
+    return { error: parsed.error.issues[0]?.message ?? "編輯行程失敗" }
   }
 
-  const { name, google_map_url, duration_minutes, note, fixed_time } = parsed.data;
+  const { name, google_map_url, duration_minutes, note, fixed_time } = parsed.data
 
   // Rule: 行程已被其他成員刪除時，編輯操作失敗
   const activity = await prisma.activity.findUnique({
     where: { id: activityId },
     include: { day: true },
-  });
+  })
   if (!activity) {
-    return { error: "找不到此行程" };
+    return { error: "找不到此行程" }
   }
 
   const membership = await prisma.tripMember.findUnique({
     where: {
       trip_id_user_id: { trip_id: activity.day.trip_id, user_id: user.id },
     },
-  });
+  })
 
   // Rule: 使用者必須是旅程成員
   if (!membership) {
-    return { error: "你不是此旅程的成員" };
+    return { error: "你不是此旅程的成員" }
   }
 
   // Rule: 成員可以編輯行程的名稱
@@ -158,52 +159,52 @@ export async function editActivity(
       note: note ?? null,
       fixed_time: fixed_time ?? null,
     },
-  });
+  })
 
-  revalidatePath(`/trips/${activity.day.trip_id}`);
-  return { success: true };
+  revalidatePath(`/trips/${activity.day.trip_id}`)
+  return { success: true }
 }
 
 export type DeleteActivityState = {
-  error?: string;
-  success?: boolean;
-};
+  error?: string
+  success?: boolean
+}
 
 export async function deleteActivity(
   _prevState: DeleteActivityState,
   formData: FormData,
 ): Promise<DeleteActivityState> {
-  const supabase = await createClient();
+  const supabase = await createClient()
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/login")
 
-  const activityId = Number(formData.get("activity_id"));
-  const confirmDeletion = formData.get("confirm_deletion") === "true";
-  const submittedTripId = Number(formData.get("trip_id"));
+  const activityId = Number(formData.get("activity_id"))
+  const confirmDeletion = formData.get("confirm_deletion") === "true"
+  const submittedTripId = Number(formData.get("trip_id"))
 
   // Rule: 行程已被其他成員先行刪除時，刪除操作視為成功（冪等）
   // （行程已不存在時，改以前端傳入的 trip_id 檢查成員資格，通過後回報成功）
   const activity = await prisma.activity.findUnique({
     where: { id: activityId },
     include: { day: true },
-  });
-  const trip_id = activity?.day.trip_id ?? submittedTripId;
+  })
+  const trip_id = activity?.day.trip_id ?? submittedTripId
 
   const membership = await prisma.tripMember.findUnique({
     where: { trip_id_user_id: { trip_id, user_id: user.id } },
-  });
+  })
 
   // Rule: 使用者必須是旅程成員
   if (!membership) {
-    return { error: "你不是此旅程的成員" };
+    return { error: "你不是此旅程的成員" }
   }
 
   // Rule: 刪除行程需經使用者確認才會執行
   if (!confirmDeletion) {
-    return { error: "請先確認刪除" };
+    return { error: "請先確認刪除" }
   }
 
   if (activity) {
@@ -211,13 +212,13 @@ export async function deleteActivity(
       // Rule: 成員可以刪除行程
       // Rule: 刪除行程後接續的交通時間一併刪除
       // （由資料庫層級的 ON DELETE CASCADE 外鍵約束保證）
-      await tx.activity.delete({ where: { id: activityId } });
+      await tx.activity.delete({ where: { id: activityId } })
 
       // Rule: 刪除行程後同一天其餘行程順序重新編號
       const remaining = await tx.activity.findMany({
         where: { day_id: activity.day_id },
         orderBy: { order: "asc" },
-      });
+      })
 
       await Promise.all(
         remaining.map((a, index) =>
@@ -226,65 +227,66 @@ export async function deleteActivity(
             data: { order: index + 1 },
           }),
         ),
-      );
-    });
+      )
+    })
   }
 
-  revalidatePath(`/trips/${trip_id}`);
-  return { success: true };
+  revalidatePath(`/trips/${trip_id}`)
+  return { success: true }
 }
 
 export type ReorderActivityState = {
-  error?: string;
-  success?: boolean;
-};
+  error?: string
+  success?: boolean
+}
 
+//同一天內拖曳調整順序
 export async function reorderActivity(
   _prevState: ReorderActivityState,
   formData: FormData,
 ): Promise<ReorderActivityState> {
-  const supabase = await createClient();
+  const supabase = await createClient()
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/login")
 
   const parsed = reorderActivitySchema.safeParse({
     activity_id: formData.get("activity_id"),
     target_order: formData.get("target_order"),
-  });
+  })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "調整行程順序失敗" };
+    return { error: parsed.error.issues[0]?.message ?? "調整行程順序失敗" }
   }
 
-  const { activity_id, target_order } = parsed.data;
+  const { activity_id, target_order } = parsed.data
 
   // Rule: 行程已被其他成員刪除時，調整順序操作失敗
   const activity = await prisma.activity.findUnique({
     where: { id: activity_id },
     include: { day: true },
-  });
+  })
   if (!activity) {
-    return { error: "找不到此行程" };
+    return { error: "找不到此行程" }
   }
 
   const membership = await prisma.tripMember.findUnique({
     where: {
       trip_id_user_id: { trip_id: activity.day.trip_id, user_id: user.id },
     },
-  });
+  })
 
   // Rule: 使用者必須是旅程成員
   if (!membership) {
-    return { error: "你不是此旅程的成員" };
+    return { error: "你不是此旅程的成員" }
   }
 
   const dayActivities = await prisma.activity.findMany({
     where: { day_id: activity.day_id },
     include: { transport: true },
-  });
+  })
 
   const reorderResult = computeReorder(
     dayActivities.map((a) => ({
@@ -294,11 +296,11 @@ export async function reorderActivity(
     })),
     activity_id,
     target_order,
-  );
+  )
 
   // Rule: 目標順序超出有效範圍時操作失敗
   if (!reorderResult) {
-    return { error: "目標順序超出有效範圍" };
+    return { error: "目標順序超出有效範圍" }
   }
 
   await prisma.$transaction(async (tx) => {
@@ -310,7 +312,7 @@ export async function reorderActivity(
           data: { order: newOrder },
         }),
       ),
-    );
+    )
 
     // Rule: 交通時間依附於順序位置，不隨行程本體移動
     await Promise.all(
@@ -321,9 +323,135 @@ export async function reorderActivity(
             data: { after_activity_id: newAfterActivityId },
           }),
       ),
-    );
-  });
+    )
+  })
 
-  revalidatePath(`/trips/${activity.day.trip_id}`);
-  return { success: true };
+  revalidatePath(`/trips/${activity.day.trip_id}`)
+  return { success: true }
+}
+
+export type MoveActivityToDayState = {
+  error?: string
+  success?: boolean
+}
+
+//拖曳到不同天，跨天搬移
+export async function moveActivityToDay(
+  _prevState: MoveActivityToDayState,
+  formData: FormData,
+): Promise<MoveActivityToDayState> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) redirect("/login")
+
+  const parsed = moveActivityToDaySchema.safeParse({
+    activity_id: formData.get("activity_id"),
+    target_day_id: formData.get("target_day_id"),
+    target_order: formData.get("target_order"),
+  })
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "搬移行程失敗" }
+  }
+
+  const { activity_id, target_day_id, target_order } = parsed.data
+
+  // Rule: 行程已被其他成員刪除時，跨天搬移操作失敗
+  const activity = await prisma.activity.findUnique({
+    where: { id: activity_id },
+    include: { day: true },
+  })
+  if (!activity) {
+    return { error: "找不到此行程" }
+  }
+
+  const membership = await prisma.tripMember.findUnique({
+    where: {
+      trip_id_user_id: { trip_id: activity.day.trip_id, user_id: user.id },
+    },
+  })
+
+  // Rule: 使用者必須是旅程成員
+  if (!membership) {
+    return { error: "你不是此旅程的成員" }
+  }
+
+  const targetDay = await prisma.day.findUnique({ where: { id: target_day_id } })
+  if (!targetDay) {
+    return { error: "找不到目標日期" }
+  }
+
+  // Rule: 目標日期不屬於同一旅程時操作失敗
+  if (targetDay.trip_id !== activity.day.trip_id) {
+    return { error: "目標日期不屬於同一旅程" }
+  }
+
+  const [sourceDayActivities, targetDayActivities] = await Promise.all([
+    prisma.activity.findMany({
+      where: { day_id: activity.day_id },
+      include: { transport: true },
+    }),
+    prisma.activity.findMany({
+      where: { day_id: target_day_id },
+      include: { transport: true },
+    }),
+  ])
+
+  const moveResult = computeCrossDayMove(
+    sourceDayActivities.map((a) => ({
+      id: a.id,
+      order: a.order,
+      transportId: a.transport?.id ?? null,
+    })),
+    targetDayActivities.map((a) => ({
+      id: a.id,
+      order: a.order,
+      transportId: a.transport?.id ?? null,
+    })),
+    activity_id,
+    target_order,
+  )
+
+  // Rule: 目標順序超出有效範圍時操作失敗
+  if (!moveResult) {
+    return { error: "目標順序超出有效範圍" }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Rule: 跨天搬移時，搬移行程前後的交通時間一併移除
+    if (moveResult.transportIdsToDelete.length > 0) {
+      await tx.transport.deleteMany({
+        where: { id: { in: moveResult.transportIdsToDelete } },
+      })
+    }
+
+    // Rule: 來源天其餘行程順序重新編號
+    await Promise.all(
+      moveResult.sourceOrders.map(({ activityId, newOrder }) =>
+        tx.activity.update({
+          where: { id: activityId },
+          data: { order: newOrder },
+        }),
+      ),
+    )
+
+    // Rule: 行程可跨天搬移（目標天含被搬移行程本身的新順序；被搬移行程一併改指向目標天）
+    await Promise.all(
+      moveResult.targetOrders.map(({ activityId, newOrder }) =>
+        tx.activity.update({
+          where: { id: activityId },
+          data: {
+            order: newOrder,
+            ...(activityId === activity_id ? { day_id: target_day_id } : {}),
+          },
+        }),
+      ),
+    )
+  })
+
+  revalidatePath(`/trips/${activity.day.trip_id}`)
+  return { success: true }
 }

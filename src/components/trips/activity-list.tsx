@@ -1,26 +1,14 @@
 "use client"
 
-import {
-  DndContext,
-  type DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core"
+import { useDroppable } from "@dnd-kit/core"
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { GripVertical, MapPin, TriangleAlert } from "lucide-react"
-import { toast } from "sonner"
 import { type KeyboardEvent, useState } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { reorderActivity } from "@/lib/actions/activities"
 import { Card, CardContent } from "@/components/ui/card"
 import { ActivityNoteDialog } from "@/components/trips/activity-note-dialog"
 import { ActivityActionsMenu } from "@/components/trips/activity-actions-menu"
@@ -32,8 +20,8 @@ import {
   type ActivityTimeline,
   type TimelineSlot,
 } from "@/lib/timeline"
-import { applyReorder, type CachedActivity, type CachedDay } from "@/lib/itinerary-cache"
-import { itineraryQueryKey } from "@/lib/queries/itinerary"
+import { dayDropId, type CachedActivity } from "@/lib/itinerary-cache"
+import { cn } from "@/lib/utils"
 
 export function ActivityList({
   tripId,
@@ -48,66 +36,19 @@ export function ActivityList({
   startTime: string | null
   activities: CachedActivity[]
 }) {
-  const queryClient = useQueryClient()
-  const queryKey = itineraryQueryKey(tripId)
-
-  // Rule: 成員拖曳後行程順序更新（樂觀更新，失敗時回滾）
-  // 其他團員的異動也會透過 useItineraryRealtime 局部更新同一份 cache，故不需另外 invalidate
-  // onMutate 先「假裝成功」讓畫面立即更新，mutationFn 才是真正打 API；如果 mutationFn 失敗，onError 就用 onMutate 存的 previous 把 cache 復原
-  // setQueryData 負責「寫入 cache」，applyReorder 負責「算出寫入的內容」——把 server 端 reorderActivity 的排序邏輯在前端本地重算一次，讓拖曳當下畫面就先更新，之後才等 server 真正確認
-  const reorderMutation = useMutation({
-    mutationFn: async ({
-      activityId,
-      targetOrder,
-    }: {
-      activityId: number
-      targetOrder: number
-    }) => {
-      const formData = new FormData()
-      formData.set("activity_id", String(activityId))
-      formData.set("target_order", String(targetOrder))
-
-      const result = await reorderActivity({}, formData)
-      if (result.error) throw new Error(result.error)
-    },
-    onMutate: async ({ activityId, targetOrder }) => {
-      await queryClient.cancelQueries({ queryKey }) //避免正在進行的 refetch 蓋掉樂觀更新
-      const previous = queryClient.getQueryData<CachedDay[]>(queryKey) //目前 cache 的快照
-      queryClient.setQueryData<CachedDay[]>(queryKey, (days) => //寫入 cache
-        days ? applyReorder(days, dayId, activityId, targetOrder) : days, //applyReorder純函式，接收目前的 CachedDay[] 快照，算出「拖曳後應該長什麼樣子」的新版本
-      )
-      return { previous }
-    },
-    onError: (error, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(queryKey, context.previous)
-      toast.error(error instanceof Error ? error.message : "調整行程順序失敗")
-    },
-  })
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  )
-
-  function handleDragEnd(event: DragEndEvent) {
-    //active 是被拖曳的項目，over 是放開時所在位置的項目
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const toIndex = activities.findIndex((a) => a.id === over.id)
-    if (toIndex === -1) return
-
-    reorderMutation.mutate({
-      activityId: Number(active.id),
-      targetOrder: toIndex + 1,
-    })
-  }
+  // Rule: 行程可跨天搬移——DndContext/onDragEnd 提升到 ItineraryBoard 統一處理，
+  // 這裡只負責把整個列表容器註冊成 drop target，讓拖到別天的空白處也能放下
+  const { setNodeRef, isOver } = useDroppable({ id: dayDropId(dayId) })
 
   if (activities.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground transition-colors",
+          isOver && "border-primary bg-primary/5",
+        )}
+      >
         這天還沒有行程
       </div>
     )
@@ -121,31 +62,30 @@ export function ActivityList({
   )
 
   return (
-    <DndContext
-      id={`activity-list-${dayId}`}
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
+    <SortableContext
+      items={activities.map((a) => a.id)}
+      strategy={verticalListSortingStrategy}
     >
-      <SortableContext
-        items={activities.map((a) => a.id)}
-        strategy={verticalListSortingStrategy}
+      <ul
+        ref={setNodeRef}
+        className={cn(
+          "rounded-xl transition-colors",
+          isOver && "outline outline-2 outline-primary outline-offset-4",
+        )}
       >
-        <ul>
-          {activities.map((activity, index) => (
-            <SortableActivityItem
-              key={activity.id}
-              tripId={tripId}
-              activity={activity}
-              index={index}
-              timeline={timelines[index]}
-              dayDate={dayDate}
-              isLast={index === activities.length - 1}
-            />
-          ))}
-        </ul>
-      </SortableContext>
-    </DndContext>
+        {activities.map((activity, index) => (
+          <SortableActivityItem
+            key={activity.id}
+            tripId={tripId}
+            activity={activity}
+            index={index}
+            timeline={timelines[index]}
+            dayDate={dayDate}
+            isLast={index === activities.length - 1}
+          />
+        ))}
+      </ul>
+    </SortableContext>
   )
 }
 

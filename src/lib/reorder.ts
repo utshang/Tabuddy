@@ -66,3 +66,58 @@ export function computeReorder(
 
   return { activityOrders, transportReassignments };
 }
+
+export type CrossDayMoveResult = {
+  /** 來源天扣除被搬移行程後，其餘行程的新順序 */
+  sourceOrders: { activityId: number; newOrder: number }[];
+  /** 目標天插入被搬移行程後，全部行程（含被搬移行程本身）的新順序 */
+  targetOrders: { activityId: number; newOrder: number }[];
+  /** 需一併刪除的交通時間：被搬移行程自己的，以及原本在它前面那筆行程的 */
+  transportIdsToDelete: number[];
+};
+
+/**
+ * 計算把行程從來源天搬移到目標天（可能是不同天）後，兩天各自的新順序。
+ *
+ * Rule: 行程可跨天搬移
+ * Rule: 目標順序超出有效範圍時操作失敗
+ * Rule: 跨天搬移時，搬移行程前後的交通時間一併移除
+ *   （交通時間代表兩個具體行程間的實際交通方式，搬到新的一天後前後兩段語意都不再成立，
+ *   直接清除讓使用者重新設定，而不是沿用舊資料或試圖轉接給遞補的行程）
+ */
+export function computeCrossDayMove(
+  sourceActivities: OrderedActivity[],
+  targetActivities: OrderedActivity[],
+  movedActivityId: number,
+  targetOrder: number,
+): CrossDayMoveResult | null {
+  const sortedSource = [...sourceActivities].sort((a, b) => a.order - b.order);
+  const fromIndex = sortedSource.findIndex((a) => a.id === movedActivityId);
+  if (fromIndex === -1) return null;
+
+  const sortedTarget = [...targetActivities].sort((a, b) => a.order - b.order);
+
+  // Rule: 目標順序超出有效範圍時操作失敗
+  if (targetOrder < 1 || targetOrder > sortedTarget.length + 1) return null;
+
+  const [moved] = sortedSource.splice(fromIndex, 1);
+  const prev = sortedSource[fromIndex - 1];
+
+  // Rule: 跨天搬移時，搬移行程前後的交通時間一併移除
+  const transportIdsToDelete: number[] = [];
+  if (moved.transportId !== null) transportIdsToDelete.push(moved.transportId);
+  if (prev && prev.transportId !== null) transportIdsToDelete.push(prev.transportId);
+
+  const sourceOrders = sortedSource.map((activity, index) => ({
+    activityId: activity.id,
+    newOrder: index + 1,
+  }));
+
+  sortedTarget.splice(targetOrder - 1, 0, moved);
+  const targetOrders = sortedTarget.map((activity, index) => ({
+    activityId: activity.id,
+    newOrder: index + 1,
+  }));
+
+  return { sourceOrders, targetOrders, transportIdsToDelete };
+}
