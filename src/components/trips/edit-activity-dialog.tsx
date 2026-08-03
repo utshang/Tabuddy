@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { editActivity } from "@/lib/actions/activities";
@@ -22,7 +21,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { applyActivityEvent, type CachedDay } from "@/lib/itinerary-cache";
 import { itineraryQueryKey } from "@/lib/queries/itinerary";
@@ -39,8 +37,15 @@ type Activity = {
   fixed_time: string | null;
 };
 
-export function EditActivityDialog({ activity }: { activity: Activity }) {
-  const [open, setOpen] = useState(false);
+export function EditActivityDialog({
+  activity,
+  open,
+  onOpenChange,
+}: {
+  activity: Activity;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const [serverError, setServerError] = useState<string>();
   const formRef = useRef<HTMLFormElement>(null);
   const queryClient = useQueryClient();
@@ -94,7 +99,7 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
     },
     onSuccess: () => {
       toast.success("行程已更新");
-      setOpen(false);
+      onOpenChange(false);
     },
     onError: (error, _formData, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
@@ -111,7 +116,7 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        setOpen(next);
+        onOpenChange(next);
         if (!next) {
           formRef.current?.reset();
           reset();
@@ -119,10 +124,6 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
         }
       }}
     >
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Pencil />
-        <span className="sr-only">編輯行程</span>
-      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>編輯行程</DialogTitle>
@@ -159,7 +160,6 @@ export function EditActivityDialog({ activity }: { activity: Activity }) {
             <Input
               id={`edit-activity-url-${activity.id}`}
               type="text"
-              placeholder="https://maps.google.com/..."
               {...register("google_map_url")}
             />
             {errors.google_map_url && (

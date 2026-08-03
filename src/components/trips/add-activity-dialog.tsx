@@ -116,7 +116,6 @@ export function AddActivityDialog({
             <Input
               id="name"
               type="text"
-              placeholder="道頓堀"
               {...register("name")}
             />
             {errors.name && (
@@ -129,7 +128,6 @@ export function AddActivityDialog({
             <Input
               id="google_map_url"
               type="text"
-              placeholder="https://maps.google.com/..."
               {...register("google_map_url")}
             />
             {errors.google_map_url && (
@@ -145,7 +143,6 @@ export function AddActivityDialog({
               id="duration_minutes"
               type="number"
               min={0}
-              placeholder="30"
               {...register("duration_minutes")}
             />
             {errors.duration_minutes && (
@@ -159,7 +156,6 @@ export function AddActivityDialog({
             <Label htmlFor="note">備註</Label>
             <Textarea
               id="note"
-              placeholder="推薦晚上去"
               {...register("note")}
             />
             {errors.note && (

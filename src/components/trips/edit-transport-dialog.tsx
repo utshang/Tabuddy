@@ -151,7 +151,6 @@ export function EditTransportDialog({
                 id={`edit-transport-hours-${activityId}`}
                 type="number"
                 min={0}
-                placeholder="0"
                 {...register("hours")}
               />
               {errors.hours && (
@@ -170,7 +169,6 @@ export function EditTransportDialog({
                 type="number"
                 min={0}
                 max={59}
-                placeholder="0"
                 {...register("minutes")}
               />
               {errors.minutes && (

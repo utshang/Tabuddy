@@ -43,7 +43,6 @@ export function LoginForm({ serverError, join }: LoginFormProps) {
         <Input
           id="email"
           type="email"
-          placeholder="you@example.com"
           autoComplete="email"
           {...register('email')}
         />

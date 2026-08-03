@@ -214,7 +214,6 @@ export function AddExpenseDialog({
             <Input
               id="expense-name"
               type="text"
-              placeholder="例如：飲料"
               {...register("name")}
             />
             {errors.name && (
@@ -253,7 +252,6 @@ export function AddExpenseDialog({
                 <Input
                   id="expense-category"
                   type="text"
-                  placeholder="例如：門票"
                   {...register("category")}
                 />
                 {errors.category && (
@@ -268,7 +266,6 @@ export function AddExpenseDialog({
                 <Input
                   id="expense-category-icon"
                   type="text"
-                  placeholder="🎫"
                   {...register("category_icon")}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -289,7 +286,6 @@ export function AddExpenseDialog({
                 type="number"
                 step="0.01"
                 min="0.01"
-                placeholder="0"
                 className="pl-7"
                 {...register("amount")}
               />
@@ -396,7 +392,6 @@ export function AddExpenseDialog({
                         type="number"
                         step="0.01"
                         min="0"
-                        placeholder="0"
                         className="h-8 w-24 text-right"
                         name={`custom_amount_${member.id}`}
                         value={customAmounts[member.id] ?? ""}

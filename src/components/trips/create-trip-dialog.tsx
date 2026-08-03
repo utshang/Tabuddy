@@ -84,7 +84,7 @@ export function CreateTripDialog() {
 
           <div className="space-y-2">
             <Label htmlFor="name">旅程名稱</Label>
-            <Input id="name" type="text" placeholder="大阪旅遊" {...register('name')} />
+            <Input id="name" type="text" {...register('name')} />
             {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
           </div>
 

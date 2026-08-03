@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteActivity } from "@/lib/actions/activities";
@@ -13,7 +12,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import type { CachedDay } from "@/lib/itinerary-cache";
 import { itineraryQueryKey } from "@/lib/queries/itinerary";
@@ -27,11 +25,14 @@ type Activity = {
 export function DeleteActivityDialog({
   tripId,
   activity,
+  open,
+  onOpenChange,
 }: {
   tripId: number;
   activity: Activity;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string>();
   const queryClient = useQueryClient();
   const queryKey = itineraryQueryKey(tripId);
@@ -63,7 +64,7 @@ export function DeleteActivityDialog({
     },
     onSuccess: () => {
       toast.success("行程已刪除");
-      setOpen(false);
+      onOpenChange(false);
     },
     onError: (error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
@@ -81,14 +82,10 @@ export function DeleteActivityDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        setOpen(next);
+        onOpenChange(next);
         if (!next) setServerError(undefined);
       }}
     >
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Trash2 />
-        <span className="sr-only">刪除行程</span>
-      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>確定要刪除「{activity.name}」嗎？</DialogTitle>
@@ -106,7 +103,7 @@ export function DeleteActivityDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            onClick={() => setOpen(false)}
+            onClick={() => onOpenChange(false)}
             disabled={mutation.isPending}
           >
             取消

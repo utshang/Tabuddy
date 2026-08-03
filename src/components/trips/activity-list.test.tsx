@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ActivityList } from "@/components/trips/activity-list";
 
@@ -195,5 +196,108 @@ describe("ActivityList 時間軸呈現", () => {
 
     expect(screen.getByText("19:00")).toBeInTheDocument();
     expect(screen.getByLabelText("時間衝突")).toBeInTheDocument();
+  });
+
+  // Rule: 行程上不直接顯示備註，點擊行程才開啟彈窗顯示行程名稱與備註（網址轉為可點擊連結）
+  it("點擊有備註的行程會開啟彈窗顯示行程名稱與備註連結", async () => {
+    const user = userEvent.setup();
+    renderActivityList({
+      dayId: 7,
+      dayDate: "2025-06-01",
+      startTime: "08:00",
+      activities: [
+        makeActivity({
+          id: 11,
+          name: "道頓堀",
+          order: 1,
+          duration_minutes: 30,
+          note: "推薦晚上去 https://example.com/food 人比較少",
+        }),
+      ],
+    });
+
+    expect(screen.queryByText(/推薦晚上去/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /道頓堀/ }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("道頓堀")).toBeInTheDocument();
+    const link = within(dialog).getByRole("link", {
+      name: "https://example.com/food",
+    });
+    expect(link).toHaveAttribute("href", "https://example.com/food");
+    expect(within(dialog).getByText(/推薦晚上去/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/人比較少/)).toBeInTheDocument();
+  });
+
+  // Rule: 備註若有斷行，彈窗中需保留斷行呈現
+  it("備註含斷行時彈窗內容保留斷行", async () => {
+    const user = userEvent.setup();
+    renderActivityList({
+      dayId: 8,
+      dayDate: "2025-06-01",
+      startTime: "08:00",
+      activities: [
+        makeActivity({
+          id: 12,
+          name: "藥妝店",
+          order: 1,
+          duration_minutes: 30,
+          note: "營業時間：11:00－20:00\n可以順便買：7F無印、9~11F抹茶粉",
+        }),
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: /藥妝店/ }));
+
+    const dialog = screen.getByRole("dialog");
+    const note = within(dialog).getByText(/營業時間/);
+    expect(note).toHaveClass("whitespace-pre-wrap");
+    expect(note.textContent).toContain(
+      "營業時間：11:00－20:00\n可以順便買：7F無印、9~11F抹茶粉",
+    );
+  });
+
+  // Rule: 沒有備註的行程也可以點擊開啟彈窗，顯示尚無備註的提示
+  it("點擊沒有備註的行程仍會開啟彈窗並顯示尚無備註", async () => {
+    const user = userEvent.setup();
+    renderActivityList({
+      dayId: 9,
+      dayDate: "2025-06-01",
+      startTime: "08:00",
+      activities: [
+        makeActivity({ id: 13, name: "自由活動", order: 1, duration_minutes: 30 }),
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: /自由活動/ }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("自由活動")).toBeInTheDocument();
+    expect(within(dialog).getByText("尚無備註")).toBeInTheDocument();
+  });
+
+  // Rule: 點擊行程卡片內的編輯／刪除／地圖連結／拖曳把手不應該連帶開啟備註彈窗
+  it("點擊編輯或刪除按鈕不會一併開啟備註彈窗", async () => {
+    const user = userEvent.setup();
+    renderActivityList({
+      dayId: 10,
+      dayDate: "2025-06-01",
+      startTime: "08:00",
+      activities: [
+        makeActivity({
+          id: 14,
+          name: "心齋橋",
+          order: 1,
+          duration_minutes: 30,
+          note: "備註內容",
+        }),
+      ],
+    });
+
+    screen.getByRole("button", { name: "行程選單" }).focus();
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("menuitem", { name: "編輯" }));
+    expect(screen.queryByText("備註內容")).not.toBeInTheDocument();
   });
 });
