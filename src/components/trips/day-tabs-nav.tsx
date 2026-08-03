@@ -99,11 +99,11 @@ export function DayTabsNav({
   return (
     <div
       ref={headerRef}
-      className="sticky z-10 bg-background/95 py-2"
+      className="sticky z-10 py-2"
       style={{ top: `${pageHeaderHeight}px` }}
     >
       <Tabs value={active} onValueChange={handleChange}>
-        <TabsList className="h-16 w-full justify-start gap-1 overflow-x-auto overscroll-x-contain scrollbar-none [&::-webkit-scrollbar]:hidden">
+        <TabsList className="h-16 w-full justify-start gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none [&::-webkit-scrollbar]:hidden">
           {days.map((day) => (
             <TabsTrigger
               key={day.id}
