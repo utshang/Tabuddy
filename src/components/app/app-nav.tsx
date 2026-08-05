@@ -9,7 +9,7 @@ export function AppNav({ user }: { user: User }) {
   const displayName = user.user_metadata?.full_name ?? user.email
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="border-b bg-background">
       <div className="container mx-auto max-w-5xl px-4 h-14 flex items-center justify-between">
         <Link href="/dashboard" className="text-primary font-bold text-lg  font-[family-name:var(--font-bevan)]">
           Tabuddy

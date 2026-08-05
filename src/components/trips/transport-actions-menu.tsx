@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EditTransportDialog } from "@/components/trips/edit-transport-dialog";
+import { TransportFormDialog } from "@/components/trips/transport-form-dialog";
 import { DeleteTransportDialog } from "@/components/trips/delete-transport-dialog";
 import type { CachedTransport } from "@/lib/itinerary-cache";
 
@@ -43,7 +43,8 @@ export function TransportActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <EditTransportDialog
+      <TransportFormDialog
+        mode="edit"
         activityId={activityId}
         transport={transport}
         open={editOpen}

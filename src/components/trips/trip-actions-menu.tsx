@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EditTripDialog } from "@/components/trips/edit-trip-dialog";
+import { TripFormDialog } from "@/components/trips/trip-form-dialog";
 import { DeleteTripDialog } from "@/components/trips/delete-trip-dialog";
 
 type Trip = {
@@ -85,7 +85,12 @@ export function TripActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <EditTripDialog trip={trip} open={editOpen} onOpenChange={setEditOpen} />
+      <TripFormDialog
+        mode="edit"
+        trip={trip}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
       <DeleteTripDialog
         trip={trip}
         open={deleteOpen}

@@ -3,20 +3,22 @@
 import { useMemo, useRef, useState, useTransition } from "react"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import type { z } from "zod"
 import { Plus } from "lucide-react"
 import { toast } from "sonner"
-import { addExpense } from "@/lib/actions/expenses"
+import { addExpense, editExpense } from "@/lib/actions/expenses"
+import { editExpenseFormSchema } from "@/lib/validations/expenses"
 import {
-  addExpenseFormSchema,
-  type AddExpenseFormValues,
-} from "@/lib/validations/expenses"
-import { EXPENSE_CATEGORY_PRESETS } from "@/lib/expense-categories"
+  EXPENSE_CATEGORY_PRESETS,
+  isPresetCategory,
+} from "@/lib/expense-categories"
 import { splitEvenly } from "@/lib/expense-split"
 import { formatYen } from "@/lib/currency"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { InputDate } from "@/components/ui/input-date"
+import { InputSelect } from "@/components/ui/input-select"
 import {
   Dialog,
   DialogContent,
@@ -30,6 +32,10 @@ import { formatDateValue, localToday, parseDateValue } from "@/lib/date"
 
 const CUSTOM_OPTION = "__custom__"
 
+// 新增與編輯開支共用同一組欄位（不含 trip_id / expense_id，兩者以隱藏欄位另外送出）
+const expenseFieldsSchema = editExpenseFormSchema.omit({ expense_id: true })
+type ExpenseFormValues = z.input<typeof expenseFieldsSchema>
+
 export type ExpenseMember = {
   /** 依加入旅程的先後順序排列 */
   id: string
@@ -37,44 +43,95 @@ export type ExpenseMember = {
   isMe: boolean
 }
 
-const selectClassName =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+export type EditableExpense = {
+  id: number
+  name: string
+  amount: number
+  category: string
+  category_icon: string | null
+  expense_date: string
+  payer_id: string
+  split_type: "even" | "custom"
+  /** 既有分攤明細：user_id → 分攤金額 */
+  splits: Record<string, number>
+}
 
-export function AddExpenseDialog({
-  tripId,
-  members,
-}: {
-  tripId: number
-  members: ExpenseMember[]
-}) {
-  const [open, setOpen] = useState(false)
+type ExpenseFormDialogProps =
+  | { mode: "create"; tripId: number; members: ExpenseMember[] }
+  | {
+      mode: "edit"
+      expense: EditableExpense
+      members: ExpenseMember[]
+      open: boolean
+      onOpenChange: (open: boolean) => void
+    }
+
+// 新增與編輯開支共用欄位、分攤試算與參與者勾選邏輯，差異只在初始值、送出的 server action
+// 與部分自訂類別／分攤金額的「還原原值 vs 清空」規則，故合併成單一元件、以 mode 區分。
+export function ExpenseFormDialog(props: ExpenseFormDialogProps) {
+  const isEdit = props.mode === "edit"
+  const expense = isEdit ? props.expense : undefined
+  const members = props.members
+  const idSuffix = isEdit ? `-${expense!.id}` : ""
+
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = isEdit ? props.open : internalOpen
+  const setOpen = isEdit ? props.onOpenChange : setInternalOpen
+
   const [serverError, setServerError] = useState<string>()
   const [isPending, startTransition] = useTransition()
+
+  const initialCategoryOption = isEdit
+    ? isPresetCategory(expense!.category)
+      ? expense!.category
+      : CUSTOM_OPTION
+    : EXPENSE_CATEGORY_PRESETS[0].value
   const [categoryOption, setCategoryOption] = useState<string>(
-    EXPENSE_CATEGORY_PRESETS[0].value,
+    initialCategoryOption,
   )
+  // Rule: 編輯分攤方式而未重新指定參與者時沿用原參與者名單（以既有分攤明細預填勾選）
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(members.map((m) => [m.id, true])),
+    Object.fromEntries(
+      members.map((m) => [m.id, isEdit ? m.id in expense!.splits : true]),
+    ),
   )
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>(
-    {},
+    () =>
+      isEdit
+        ? Object.fromEntries(
+            Object.entries(expense!.splits).map(([id, amount]) => [
+              id,
+              String(amount),
+            ]),
+          )
+        : {},
   )
   const formRef = useRef<HTMLFormElement>(null)
   const isCustomCategory = categoryOption === CUSTOM_OPTION
-  const me = members.find((m) => m.isMe)
+  const me = !isEdit ? members.find((m) => m.isMe) : undefined
 
-  const defaultValues: AddExpenseFormValues = useMemo(
-    () => ({
-      trip_id: tripId,
-      name: "",
-      amount: "",
-      category: EXPENSE_CATEGORY_PRESETS[0].value,
-      category_icon: undefined,
-      payer_id: me?.id ?? "",
-      expense_date: "",
-      split_type: "even",
-    }),
-    [tripId, me?.id],
+  const defaultValues: ExpenseFormValues = useMemo(
+    () =>
+      isEdit
+        ? {
+            name: expense!.name,
+            amount: expense!.amount,
+            category: expense!.category,
+            category_icon: expense!.category_icon ?? undefined,
+            payer_id: expense!.payer_id,
+            expense_date: expense!.expense_date,
+            split_type: expense!.split_type,
+          }
+        : {
+            name: "",
+            amount: "",
+            category: EXPENSE_CATEGORY_PRESETS[0].value,
+            category_icon: undefined,
+            payer_id: me?.id ?? "",
+            expense_date: "",
+            split_type: "even",
+          },
+    [isEdit, expense, me?.id],
   )
 
   const {
@@ -84,12 +141,13 @@ export function AddExpenseDialog({
     setValue,
     control,
     formState: { errors },
-  } = useForm<AddExpenseFormValues>({
-    resolver: zodResolver(addExpenseFormSchema),
+  } = useForm<ExpenseFormValues>({
+    resolver: zodResolver(expenseFieldsSchema),
     defaultValues,
   })
 
   const splitType = useWatch({ control, name: "split_type" })
+  const payerId = useWatch({ control, name: "payer_id" })
   const watchedAmount = Number(useWatch({ control, name: "amount" }))
   const expenseDate = useWatch({ control, name: "expense_date" }) as
     | string
@@ -129,9 +187,22 @@ export function AddExpenseDialog({
   })()
 
   function resetForm() {
-    setCategoryOption(EXPENSE_CATEGORY_PRESETS[0].value)
-    setChecked(Object.fromEntries(members.map((m) => [m.id, true])))
-    setCustomAmounts({})
+    setCategoryOption(initialCategoryOption)
+    setChecked(
+      Object.fromEntries(
+        members.map((m) => [m.id, isEdit ? m.id in expense!.splits : true]),
+      ),
+    )
+    setCustomAmounts(
+      isEdit
+        ? Object.fromEntries(
+            Object.entries(expense!.splits).map(([id, amount]) => [
+              id,
+              String(amount),
+            ]),
+          )
+        : {},
+    )
     formRef.current?.reset()
     reset(defaultValues)
   }
@@ -139,11 +210,17 @@ export function AddExpenseDialog({
   function handleCategoryOptionChange(next: string) {
     setCategoryOption(next)
     if (next === CUSTOM_OPTION) {
-      // 類別為必填：切換為自定義時清空，待使用者輸入類別名稱
-      setValue("category", "", { shouldValidate: true })
-      setValue("category_icon", undefined)
+      // Rule: 自定義類別的名稱與圖示皆可編輯（切換回原本的自定義類別時還原原值；否則清空待輸入）
+      if (isEdit && initialCategoryOption === CUSTOM_OPTION) {
+        setValue("category", expense!.category, { shouldValidate: true })
+        setValue("category_icon", expense!.category_icon ?? undefined)
+      } else {
+        // 類別為必填：切換為自定義時清空，待使用者輸入類別名稱
+        setValue("category", "", { shouldValidate: true })
+        setValue("category_icon", undefined)
+      }
     } else {
-      // 圖示僅適用於自定義類別：改回預設選項時清空
+      // Rule: 類別改為預設選項時圖示自動清除（前端先清空，後端亦強制）
       setValue("category", next, { shouldValidate: true })
       setValue("category_icon", undefined)
     }
@@ -158,15 +235,18 @@ export function AddExpenseDialog({
 
     setServerError(undefined)
     startTransition(async () => {
-      const result = await addExpense({}, new FormData(formRef.current!))
+      const formData = new FormData(formRef.current!)
+      const result = isEdit
+        ? await editExpense({}, formData)
+        : await addExpense({}, formData)
 
       if (result.error) {
         setServerError(result.error)
         return
       }
 
-      toast.success("開支新增成功")
-      resetForm()
+      toast.success(isEdit ? "開支已更新" : "開支新增成功")
+      if (!isEdit) resetForm()
       setOpen(false)
     })
   })
@@ -178,26 +258,30 @@ export function AddExpenseDialog({
         setOpen(next)
         if (next) {
           // Rule: 開支日期未指定時預設為當天（以使用者裝置時區帶入預設值）
-          setValue("expense_date", localToday())
+          if (!isEdit) setValue("expense_date", localToday())
         } else {
           resetForm()
           setServerError(undefined)
         }
       }}
     >
-      <DialogTrigger
-        render={
-          <Button className="h-auto flex-col gap-1 rounded-xl px-6 py-3" />
-        }
-      >
-        <Plus className="size-5" />
-        新增開支
-      </DialogTrigger>
+      {!isEdit && (
+        <DialogTrigger
+          render={
+            <Button className="h-auto flex-col gap-1 rounded-xl px-6 py-3" />
+          }
+        >
+          <Plus className="size-5" />
+          新增開支
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>新增開支</DialogTitle>
+          <DialogTitle>{isEdit ? "編輯開支" : "新增開支"}</DialogTitle>
           <DialogDescription>
-            填寫品項、金額、類別與付款人，並選擇分攤方式。
+            {isEdit
+              ? "修改品項、金額、類別、付款人或分攤方式。"
+              : "填寫品項、金額、類別與付款人，並選擇分攤方式。"}
           </DialogDescription>
         </DialogHeader>
 
@@ -208,11 +292,20 @@ export function AddExpenseDialog({
             </div>
           )}
 
-          <input type="hidden" {...register("trip_id")} />
+          {isEdit ? (
+            <input type="hidden" name="expense_id" defaultValue={expense!.id} />
+          ) : (
+            <input
+              type="hidden"
+              name="trip_id"
+              defaultValue={props.mode === "create" ? props.tripId : undefined}
+            />
+          )}
+
           <div className="space-y-2">
-            <Label htmlFor="expense-name">標題</Label>
+            <Label htmlFor={`expense-name${idSuffix}`}>標題</Label>
             <Input
-              id="expense-name"
+              id={`expense-name${idSuffix}`}
               type="text"
               {...register("name")}
             />
@@ -222,20 +315,19 @@ export function AddExpenseDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category_option">類別</Label>
-            <select
-              id="category_option"
+            <Label htmlFor={`category-option${idSuffix}`}>類別</Label>
+            <InputSelect
+              id={`category-option${idSuffix}`}
               value={categoryOption}
-              onChange={(e) => handleCategoryOptionChange(e.target.value)}
-              className={selectClassName}
-            >
-              {EXPENSE_CATEGORY_PRESETS.map((preset) => (
-                <option key={preset.value} value={preset.value}>
-                  {preset.icon} {preset.value}
-                </option>
-              ))}
-              <option value={CUSTOM_OPTION}>✏️ 新增自定義類別…</option>
-            </select>
+              onValueChange={handleCategoryOptionChange}
+              options={[
+                ...EXPENSE_CATEGORY_PRESETS.map((preset) => ({
+                  value: preset.value,
+                  label: `${preset.icon} ${preset.value}`,
+                })),
+                { value: CUSTOM_OPTION, label: "✏️ 新增自定義類別…" },
+              ]}
+            />
           </div>
 
           {!isCustomCategory && (
@@ -248,9 +340,9 @@ export function AddExpenseDialog({
           {isCustomCategory && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="expense-category">類別名稱</Label>
+                <Label htmlFor={`expense-category${idSuffix}`}>類別名稱</Label>
                 <Input
-                  id="expense-category"
+                  id={`expense-category${idSuffix}`}
                   type="text"
                   {...register("category")}
                 />
@@ -262,9 +354,11 @@ export function AddExpenseDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="expense-category-icon">圖示（選填）</Label>
+                <Label htmlFor={`expense-category-icon${idSuffix}`}>
+                  圖示（選填）
+                </Label>
                 <Input
-                  id="expense-category-icon"
+                  id={`expense-category-icon${idSuffix}`}
                   type="text"
                   {...register("category_icon")}
                 />
@@ -276,13 +370,13 @@ export function AddExpenseDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="expense-amount">金額</Label>
+            <Label htmlFor={`expense-amount${idSuffix}`}>金額</Label>
             <div className="relative">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
                 ¥
               </span>
               <Input
-                id="expense-amount"
+                id={`expense-amount${idSuffix}`}
                 type="number"
                 step="0.01"
                 min="0.01"
@@ -299,19 +393,19 @@ export function AddExpenseDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="expense-payer">支付者</Label>
-              <select
-                id="expense-payer"
-                className={selectClassName}
-                {...register("payer_id")}
-              >
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                    {m.isMe && "（我）"}
-                  </option>
-                ))}
-              </select>
+              <Label htmlFor={`expense-payer${idSuffix}`}>支付者</Label>
+              <InputSelect
+                id={`expense-payer${idSuffix}`}
+                name="payer_id"
+                value={payerId}
+                onValueChange={(v) =>
+                  setValue("payer_id", v, { shouldValidate: true })
+                }
+                options={members.map((m) => ({
+                  value: m.id,
+                  label: `${m.name}${m.isMe ? "（我）" : ""}`,
+                }))}
+              />
               {errors.payer_id && (
                 <p className="text-sm text-destructive">
                   {errors.payer_id.message}
@@ -320,10 +414,10 @@ export function AddExpenseDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="expense-date">何時</Label>
+              <Label htmlFor={`expense-date${idSuffix}`}>何時</Label>
               <input type="hidden" {...register("expense_date")} />
               <InputDate
-                id="expense-date"
+                id={`expense-date${idSuffix}`}
                 date={expenseDate ? parseDateValue(expenseDate) : undefined}
                 onSelect={(date) => {
                   if (date) {
@@ -344,14 +438,21 @@ export function AddExpenseDialog({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>分攤</Label>
-              <select
+              <InputSelect
                 aria-label="分攤方式"
-                className={`${selectClassName} h-8 w-auto`}
-                {...register("split_type")}
-              >
-                <option value="even">平均分配</option>
-                <option value="custom">自訂金額</option>
-              </select>
+                name="split_type"
+                className="h-8 w-auto"
+                value={splitType}
+                onValueChange={(v) =>
+                  setValue("split_type", v as "even" | "custom", {
+                    shouldValidate: true,
+                  })
+                }
+                options={[
+                  { value: "even", label: "平均分配" },
+                  { value: "custom", label: "自訂金額" },
+                ]}
+              />
             </div>
 
             <ul className="divide-y rounded-lg border">
@@ -428,7 +529,13 @@ export function AddExpenseDialog({
 
           <DialogFooter>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "新增中…" : "新增"}
+              {isEdit
+                ? isPending
+                  ? "儲存中…"
+                  : "儲存"
+                : isPending
+                  ? "新增中…"
+                  : "新增"}
             </Button>
           </DialogFooter>
         </form>

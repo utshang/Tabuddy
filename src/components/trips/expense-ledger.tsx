@@ -1,9 +1,9 @@
 import { getCategoryIcon } from "@/lib/expense-categories";
 import { formatExpenseDate, formatYen } from "@/lib/currency";
 import {
-  AddExpenseDialog,
+  ExpenseFormDialog,
   type ExpenseMember,
-} from "@/components/trips/add-expense-dialog";
+} from "@/components/trips/expense-form-dialog";
 import { ExpenseActionsMenu } from "@/components/trips/expense-actions-menu";
 
 export type LedgerExpense = {
@@ -49,7 +49,7 @@ export function ExpenseLedger({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div className="grid grid-cols-2 gap-4 text-center">
         <div>
           <p className="text-sm text-muted-foreground">我的開支</p>
@@ -111,8 +111,8 @@ export function ExpenseLedger({
         </div>
       )}
 
-      <div className="flex justify-center pt-2">
-        <AddExpenseDialog tripId={tripId} members={members} />
+      <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center bg-gradient-to-t from-background via-background/95 to-transparent pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-6">
+        <ExpenseFormDialog mode="create" tripId={tripId} members={members} />
       </div>
     </div>
   );
