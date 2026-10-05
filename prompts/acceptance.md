@@ -1,12 +1,14 @@
-# Deploy：部署與自動化驗收（Tabuddy 版）
+# Acceptance：部署驗收（Tabuddy 版）
 
 ---
 
-> **本 prompt 由使用者主動觸發即代表要部署，不需要事先確認 `CLAUDE.md` 的目前進度。**
+> **本 prompt 於功能開發完成後由使用者主動觸發，執行建置、部署環境確認與功能驗收，不需要事先確認 `CLAUDE.md` 的目前進度。**
+
+> **AI 不執行 git commit / push**：Vercel 部署由使用者自行 commit / push 觸發；需要驗證線上版本時，請使用者完成 push 後再進行。
 
 > **本 prompt 是 `automation-ts.md` 的後續階段，前提是功能開發（規格理解 → 資料庫 → 後端 → 前端）已完成。**
 
-> **部署不算一個功能 phase，不需要更新 `CLAUDE.md` 的 `## 目前進度`。**
+> **驗收不算一個功能 phase，不需要更新 `CLAUDE.md` 的 `## 目前進度`。**
 
 ---
 
@@ -40,7 +42,7 @@
 
 ### 階段 2：Vercel 部署
 
-- 將專案部署至 Vercel
+- 部署由使用者 commit / push 觸發，AI 不執行 git 操作
 - 在 Vercel 專案設定中配置所有環境變數
 - 確認 build 成功（含 migration 套用）且應用可正常啟動
 
