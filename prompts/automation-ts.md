@@ -26,7 +26,7 @@
 
 - 用 Next.js 慣例化的結構，正確實作所有規則（依 Feature Files 中的 Rule 數量）
 - 業務規則（如拆帳 / 債務化簡）的**計算過程**要清楚呈現給使用者——這對拆帳類產品本身就是有價值的 UX，不只是 demo
-- 測試資料（seed）要充足，足以觸發各種規則場景
+- 業務邏輯抽成純函式並撰寫單元測試（Vitest），讓規則的正確性有自動化保護
 
 > 部署與實際驗證屬於獨立階段，見 `prompts/deploy.md`。
 
@@ -35,7 +35,7 @@
 - 實作 `spec/features/` 中定義的所有功能
 - 正確實作所有業務規則與計算邏輯，並讓每條規則可追溯回規格
 - 前端清楚展示規則計算過程（不只是最終結果）
-- 建立豐富的 seed 資料（`prisma/seed.ts`）
+- 為業務邏輯純函式撰寫單元測試（`src/lib/*.test.ts`）
 
 **不要做的**：
 
@@ -187,27 +187,13 @@
 - 跨屬性不變條件（涉及多欄位） → migration 中以原生 SQL `CHECK` constraint 補上
 - 規格定義的存取規則 → Supabase **RLS Policies**（僅在規格定義了身分 / 權限時）
 
-#### 2.3 建立測試資料（Seed Data）【重要】
+#### 2.3 套用 Migration
 
-**必須建立豐富的測試資料，讓使用者能立即操作驗證功能**
-
-於 `prisma/seed.ts` 撰寫 seed script，建立原則：
-
-1. **識別核心實體**：根據 `spec/erm.dbml` 識別系統的核心實體
-2. **建立基礎資料**：為每個核心實體建立至少 5-10 筆測試資料
-3. **涵蓋測試場景**：測試資料要能觸發 Feature Files 中的各種 Rules
-
-測試資料設計要能觸發各種規則：
-
-- 邊界條件（例如：金額剛好達標 / 差一點）
-- 業務規則（例如：拆帳分攤、債務化簡、各種優惠或分帳模式）
-- 錯誤情境（例如：違反前置條件的資料）
-
-#### 2.4 套用 Migration 與 Seed
-
-- 使用 `prisma migrate dev`（本機）/ `prisma migrate deploy`（線上）建立資料表與約束
-- 使用 `prisma db seed` 載入測試資料
+- 使用 `prisma migrate dev`（本機）建立資料表與約束；線上由 `npm run build` 自動執行 `prisma migrate deploy`
+- RLS Policies、Realtime publication、`REPLICA IDENTITY` 等 Supabase 設定一律寫進 migration SQL，不在 Dashboard 手動設定
 - 確保流程可重複執行
+
+> 本專案**不使用 seed**：規則正確性由單元測試保護，手動驗證則透過 UI 實際操作建立資料。
 
 ---
 
@@ -218,7 +204,8 @@
 #### 3.1 實作策略
 
 - 使用 Next.js Route Handlers / Server Actions
-- 將業務邏輯（特別是拆帳 / 化簡演算法）抽成獨立、可測試的純函式或 service 模組
+- 將業務邏輯（特別是拆帳 / 化簡演算法）抽成獨立、可測試的純函式模組，放在 `src/lib/`
+- 每個純函式模組旁放對應的 `*.test.ts`（Vitest），以 Feature File 的 Examples 為測試案例，並驗證演算法不變條件（例如：淨額總和為 0）
 - **關鍵是：每條規則都要正確實作，邏輯清楚易讀，並可追溯回規格**
 
 #### 3.2 API / Action 設計
@@ -311,7 +298,7 @@
 2. **嚴格遵守規格**：任何實作都必須有明確的規格依據，禁止腦補
 3. **規則可追溯**：每個規則實作都要加註解，能追溯到具體的規格條目
 4. **前端展示完整**：使用者要能透過前端畫面驗證所有規則，業務規則計算過程必須清楚展示
-5. **測試資料豐富**：seed data 要包含足夠的測試資料，讓人能輕易測試各種場景
+5. **規則有測試保護**：業務邏輯純函式要有單元測試，涵蓋 Feature File 的 Examples、邊界條件與不變條件
 6. **約束強制**：資料約束優先在資料庫層面（Prisma / SQL CHECK / RLS）實作
 
 > 驗收階段規則見 `prompts/deploy.md`。
@@ -335,14 +322,13 @@
 
 ### 1. 原始碼
 
-- 完整的 Next.js 15 專案程式碼（前端、後端、業務邏輯模組）
+- 完整的 Next.js 16 專案程式碼（前端、後端、業務邏輯模組）
 - `package.json` 包含所有必要依賴
 
 ### 2. 資料庫
 
 - `prisma/schema.prisma`：完整對應 `spec/erm.dbml`
 - Migration 檔（含原生 SQL CHECK constraint，如需要）
-- `prisma/seed.ts`：包含可涵蓋各種測試場景的測試資料
 - RLS Policies（若規格定義了存取規則）
 
 ### 3. 文件
@@ -365,13 +351,13 @@
 **資料庫實作：**
 
 - [ ] `prisma/schema.prisma` 完整對應 ERM，所有約束都已實作（Prisma / SQL CHECK / RLS）
-- [ ] `prisma/seed.ts` 包含可觸發各種測試場景的測試資料
 
 **後端實作：**
 
 - [ ] 所有規則都已在程式碼中以註解形式抄寫
 - [ ] 所有規則都已正確實作（特別是多步驟計算、多重規則疊加）
 - [ ] 端點完整（涵蓋所有 Feature 的操作）
+- [ ] 業務邏輯純函式皆有單元測試，`npm run test -- --run` 全數通過
 
 **前端實作（關鍵）：**
 
@@ -394,7 +380,6 @@
 - **前置階段**：`discovery.md`、`clarify-and-translation.md`、`formulation.md` 已產出完整規格
 - **本階段角色**：自動化開發階段，將完整規格轉換為結構乾淨、規則正確的可運行應用程式
 - **後續階段**：`deploy.md`——功能開發完成、使用者準備部署時執行，負責部署與自動化驗收
-- **與 `prompts/tests/01`→`05`（四段式 TDD + 串接）的關係**：兩者是**同一個實作階段的替代路徑，不是接續關係**。若某個 feature 已經走過 `prompts/tests/` 的流程（有測試保護的業務邏輯模組 + 已串接的頁面），**不要**再對該 feature 跑本 prompt，本 prompt 會從規格重新推導一份自己的實作，可能與已測試的模組重複或衝突。本 prompt 僅適合完全沒走 TDD 流程、想一次做完的 feature。
 
 ---
 

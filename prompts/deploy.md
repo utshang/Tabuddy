@@ -4,7 +4,7 @@
 
 > **本 prompt 由使用者主動觸發即代表要部署，不需要事先確認 `CLAUDE.md` 的目前進度。**
 
-> **本 prompt 是 `automation-ts.md`（或 `prompts/tests/` 流程）的後續階段，前提是功能開發（規格理解 → 資料庫 → 後端 → 前端）已完成。**
+> **本 prompt 是 `automation-ts.md` 的後續階段，前提是功能開發（規格理解 → 資料庫 → 後端 → 前端）已完成。**
 
 > **部署不算一個功能 phase，不需要更新 `CLAUDE.md` 的 `## 目前進度`。**
 
@@ -15,6 +15,7 @@
 **技術棧、架構慣例一律以專案的 `CLAUDE.md` 為準**，本 prompt 不另外指定，以免兩處 drift。
 
 - 應用部署於 **Vercel**，資料庫使用 **Supabase 託管 Postgres**（詳見 `CLAUDE.md` 的「技術選型」）
+- 套件管理使用 **npm**（專案以 `package-lock.json` 鎖版本）
 
 ---
 
@@ -23,8 +24,8 @@
 ### 部署與可驗收原則
 
 - 應用部署於 **Vercel**，資料庫使用 **Supabase 託管 Postgres**
-- 環境變數透過 `.env`（本機）與 Vercel 專案設定（線上）管理，提供 `.env.example` 範本
-- **AI 必須自行驗收**：完成後實際建置（`yarn build`）、啟動、訪問網頁入口，確認應用可正常運行且規則計算正確
+- 環境變數透過 `.env.local`（本機）與 Vercel 專案設定（線上）管理，提供 `.env.example` 範本
+- **AI 必須自行驗收**：完成後實際建置（`npm run build`）、啟動、訪問網頁入口，確認應用可正常運行且規則計算正確
 
 ---
 
@@ -33,20 +34,25 @@
 ### 階段 1：Supabase 專案設定
 
 - 建立 Supabase 專案，取得 Postgres 連線字串與 API keys
-- 套用 Prisma migration（`prisma migrate deploy`）至 Supabase 資料庫
-- 載入 seed 資料
-- 若規格定義了存取規則，設定對應的 RLS Policies
+- Migration 不需手動套用：`npm run build` 會先執行 `prisma migrate deploy`，Vercel build 時自動套用至 Supabase
+- RLS Policies、Realtime publication、`REPLICA IDENTITY` 等設定皆寫在 `prisma/migrations/` 中，隨 migration 一併套用，不在 Supabase Dashboard 手動設定
+- 專案目前**沒有 seed**，驗收所需的測試資料透過 UI 實際操作建立（註冊多個帳號、建立旅程、以邀請連結加入等）
 
 ### 階段 2：Vercel 部署
 
 - 將專案部署至 Vercel
 - 在 Vercel 專案設定中配置所有環境變數
-- 確認 build 成功且應用可正常啟動
+- 確認 build 成功（含 migration 套用）且應用可正常啟動
 
 ### 階段 3：環境變數
 
-- 建立 `.env.example` 提供環境變數範本
-- 記錄所有必要變數：`DATABASE_URL`、Supabase URL / anon key / service role key（及其他規格需要的設定）
+- 以 `.env.example` 作為環境變數範本，本機複製為 `.env.local`（`prisma.config.ts` 讀取此檔）
+- 必要變數：
+  - `NEXT_PUBLIC_SUPABASE_URL`：Supabase 專案 URL
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`：Supabase anon key
+  - `DATABASE_URL`：Postgres 連線（transaction pooler，應用程式使用）
+  - `DIRECT_URL`：Postgres 連線（session pooler，migration 使用）
+- 新增變數時同步更新 `.env.example`
 - **絕不將真實金鑰提交至版本控制**
 
 ---
@@ -55,11 +61,10 @@
 
 **AI 必須實際執行以下步驟並確認結果：**
 
-1. **安裝依賴**：`yarn install`，確認無錯誤
-2. **產生 Prisma Client 並套用 migration**：確認 schema 與約束正確建立
-3. **建置**：`yarn build`，確認無型別 / build 錯誤
+1. **安裝依賴**：`npm install`，確認無錯誤（`postinstall` 會自動執行 `prisma generate`）
+2. **靜態檢查與單元測試**：`npm run typecheck`、`npm run lint`、`npm run test -- --run`，確認全數通過
+3. **建置**：`npm run build`，確認 migration 套用成功且無型別 / build 錯誤
 4. **啟動並訪問**：啟動應用（本機或 Vercel preview），實際訪問首頁，確認可正常載入
-5. **檢查資料**：確認 seed 資料已載入
 
 ### 階段 5：功能驗收清單
 
@@ -135,7 +140,8 @@
 
 **部署：**
 
-- [ ] AI 已實際執行 `yarn build` 並確認 build 成功
+- [ ] AI 已實際執行 `npm run build` 並確認 build 成功
+- [ ] typecheck、lint、單元測試全數通過
 - [ ] Migration 已套用至 Supabase，應用可於 Vercel / 本機正常訪問
 
 **功能驗收（最關鍵）：**
@@ -148,7 +154,7 @@
 
 ## 與其他 Prompt 的關係
 
-- **前置階段**：`automation-ts.md`（或 `prompts/tests/01`→`05`）——功能開發已完成，包含規格理解、資料庫、後端、前端
+- **前置階段**：`automation-ts.md`——功能開發已完成，包含規格理解、資料庫、後端、前端
 - **本階段角色**：將已完成的應用部署至 Vercel / Supabase，並實際驗收所有規則的正確性
 - **後續階段**：無（本階段為最終驗收階段）
 
@@ -162,6 +168,7 @@
 2. **要測試規則正確性**：不是測試「能不能跑」，而是測試「算對沒有」
 3. **資料約束很重要**：Prisma / SQL CHECK / RLS 是防止錯誤資料的第一道防線
 4. **金鑰安全**：真實環境變數絕不提交版本控制
+5. **Supabase 閒置暫停**：免費專案閒置 7 天會自動暫停，驗收前若 API 逾時，先到 Supabase Dashboard 確認專案狀態
 
 ### 成功的標準
 
